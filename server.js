@@ -4,6 +4,12 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// VERSION
+const VERSION = '0.2.0';
+
+// Simple admin password (in production, use proper hashing/env)
+const ADMIN_PASSWORD = 'admin123';
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -265,11 +271,243 @@ app.delete('/api/appointments/:id', (req, res) => {
   });
 });
 
+// ============================================
+// Admin API Endpoints
+// ============================================
+
+// Admin authentication middleware
+function adminAuth(req, res, next) {
+  const token = req.headers['x-admin-token'] || req.query.token;
+  
+  if (!token || token !== ADMIN_PASSWORD) {
+    return res.status(401).json({ 
+      error: "未授權",
+      message: "請提供有效的管理員權杖"
+    });
+  }
+  
+  req.adminAuthenticated = true;
+  next();
+}
+
+// POST /api/admin/login - Employee login
+app.post('/api/admin/login', (req, res) => {
+  const { password } = req.body;
+  
+  if (!password) {
+    return res.status(400).json({ 
+      error: "請提供密碼" 
+    });
+  }
+  
+  if (password === ADMIN_PASSWORD) {
+    res.json({
+      success: true,
+      message: "登入成功",
+      token: ADMIN_PASSWORD,
+      expiresIn: '24h'
+    });
+  } else {
+    res.status(401).json({ 
+      error: "密碼錯誤" 
+    });
+  }
+});
+
+// GET /api/admin/appointments - All appointments (with filters) - Admin only
+app.get('/api/admin/appointments', adminAuth, (req, res) => {
+  const { date, doctorId, status, startDate, endDate, search } = req.query;
+  
+  let filtered = [...appointments];
+  
+  // Filter by date
+  if (date) {
+    filtered = filtered.filter(appt => appt.date === date);
+  }
+  
+  // Filter by date range
+  if (startDate && endDate) {
+    filtered = filtered.filter(appt => appt.date >= startDate && appt.date <= endDate);
+  }
+  
+  // Filter by doctor
+  if (doctorId) {
+    filtered = filtered.filter(appt => appt.doctorId === parseInt(doctorId));
+  }
+  
+  // Filter by status
+  if (status) {
+    filtered = filtered.filter(appt => appt.status === status);
+  }
+  
+  // Search by name or phone
+  if (search) {
+    const searchLower = search.toLowerCase();
+    filtered = filtered.filter(appt => 
+      appt.name.toLowerCase().includes(searchLower) || 
+      appt.phone.includes(search)
+    );
+  }
+  
+  // Sort by date and time (newest first)
+  filtered.sort((a, b) => {
+    const dateCompare = b.date.localeCompare(a.date);
+    if (dateCompare !== 0) return dateCompare;
+    return b.time.localeCompare(a.time);
+  });
+  
+  res.json({
+    total: filtered.length,
+    appointments: filtered
+  });
+});
+
+// PUT /api/admin/appointments/:id - Update appointment - Admin only
+app.put('/api/admin/appointments/:id', adminAuth, (req, res) => {
+  const appointment = appointments.find(a => a.id === parseInt(req.params.id));
+  if (!appointment) {
+    return res.status(404).json({ error: "預約不存在" });
+  }
+  
+  const { name, phone, doctorId, date, time, status, notes } = req.body;
+  
+  // Update fields if provided
+  if (name) appointment.name = name;
+  if (phone) appointment.phone = phone;
+  if (notes) appointment.notes = notes;
+  
+  // If changing doctor/date/time, validate availability
+  const newDoctorId = doctorId ? parseInt(doctorId) : appointment.doctorId;
+  const newDate = date || appointment.date;
+  const newTime = time || appointment.time;
+  
+  if (doctorId || date || time) {
+    // Validate doctor exists
+    const doctor = doctors.find(d => d.id === newDoctorId);
+    if (!doctor) {
+      return res.status(404).json({ error: "醫生不存在" });
+    }
+    
+    // Check if slot is available (excluding current appointment)
+    const isBooked = appointments.some(
+      appt => appt.id !== appointment.id &&
+              appt.doctorId === newDoctorId && 
+              appt.date === newDate && 
+              appt.time === newTime &&
+              appt.status !== 'cancelled'
+    );
+    
+    if (isBooked) {
+      return res.status(409).json({ error: "此時段已被預約" });
+    }
+    
+    appointment.doctorId = newDoctorId;
+    appointment.doctorName = doctor.name;
+    appointment.date = newDate;
+    appointment.time = newTime;
+  }
+  
+  // Update status if provided
+  if (status) {
+    appointment.status = status;
+    if (status === 'cancelled') {
+      appointment.cancelledAt = new Date().toISOString();
+    }
+  }
+  
+  appointment.updatedAt = new Date().toISOString();
+  
+  res.json({
+    message: "預約已更新",
+    appointment
+  });
+});
+
+// DELETE /api/admin/appointments/:id - Cancel appointment - Admin only
+app.delete('/api/admin/appointments/:id', adminAuth, (req, res) => {
+  const appointment = appointments.find(a => a.id === parseInt(req.params.id));
+  if (!appointment) {
+    return res.status(404).json({ error: "預約不存在" });
+  }
+  
+  appointment.status = 'cancelled';
+  appointment.cancelledAt = new Date().toISOString();
+  appointment.cancelledBy = 'admin';
+  
+  res.json({
+    message: "預約已取消",
+    appointment
+  });
+});
+
+// GET /api/admin/doctors/schedule - Doctor schedule - Admin only
+app.get('/api/admin/doctors/schedule', adminAuth, (req, res) => {
+  const { date, startDate, endDate } = req.query;
+  
+  if (!date && !startDate && !endDate) {
+    return res.status(400).json({ 
+      error: "請提供日期",
+      required: "date 或 startDate + endDate"
+    });
+  }
+  
+  let dates = [];
+  
+  if (date) {
+    dates = [date];
+  } else if (startDate && endDate) {
+    // Generate date range
+    let current = new Date(startDate);
+    const end = new Date(endDate);
+    while (current <= end) {
+      dates.push(current.toISOString().split('T')[0]);
+      current.setDate(current.getDate() + 1);
+    }
+  }
+  
+  const schedule = dates.map(dateStr => {
+    const dayAppointments = appointments.filter(
+      appt => appt.date === dateStr && appt.status !== 'cancelled'
+    );
+    
+    return {
+      date: dateStr,
+      dayOfWeek: new Date(dateStr).toLocaleDateString('zh-HK', { weekday: 'long' }),
+      totalAppointments: dayAppointments.length,
+      doctors: doctors.map(doctor => {
+        const doctorAppointments = dayAppointments.filter(
+          appt => appt.doctorId === doctor.id
+        );
+        return {
+          doctorId: doctor.id,
+          doctorName: doctor.name,
+          doctorType: doctor.type,
+          appointmentCount: doctorAppointments.length,
+          appointments: doctorAppointments.map(appt => ({
+            id: appt.id,
+            time: appt.time,
+            patientName: appt.name,
+            phone: appt.phone,
+            status: appt.status
+          }))
+        };
+      })
+    };
+  });
+  
+  res.json({
+    startDate: dates[0],
+    endDate: dates[dates.length - 1],
+    totalDays: dates.length,
+    schedule
+  });
+});
+
 // GET /api/config - 獲取系統設定 (手機優化版)
 app.get('/api/config', (req, res) => {
   // 手機優化版回傳 - 精簡數據易於顯示
   res.json({
-    version: "0.1.0",
+    version: VERSION,
     clinic: {
       name: clinic.name,
       address: clinic.address,
@@ -296,14 +534,14 @@ app.get('/api/config', (req, res) => {
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
-    version: '0.1.0',
+    version: VERSION,
     timestamp: new Date().toISOString()
   });
 });
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🏥 青苗綜合醫療診所預約系統 API v0.1.0`);
+  console.log(`🏥 青苗綜合醫療診所預約系統 API v${VERSION}`);
   console.log(`   Server running on http://localhost:${PORT}`);
   console.log(`\n📋 Available Endpoints:`);
   console.log(`   GET  /api/config        - 系統設定 (手機優化)`);
@@ -315,4 +553,10 @@ app.listen(PORT, () => {
   console.log(`   GET  /api/appointments - 預約列表`);
   console.log(`   GET  /api/appointments/:id - 預約詳情`);
   console.log(`   DELETE /api/appointments/:id - 取消預約`);
+  console.log(`\n🔐 Admin Endpoints:`);
+  console.log(`   POST /api/admin/login              - 員工登入`);
+  console.log(`   GET  /api/admin/appointments      - 所有預約 (需token)`);
+  console.log(`   PUT  /api/admin/appointments/:id  - 更新預約 (需token)`);
+  console.log(`   DELETE /api/admin/appointments/:id - 取消預約 (需token)`);
+  console.log(`   GET  /api/admin/doctors/schedule  - 醫生Schedule (需token)`);
 });
