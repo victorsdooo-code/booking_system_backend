@@ -540,6 +540,16 @@ app.get('/health', (req, res) => {
 });
 
 // Start server
+
+// Self-ping to keep Render free tier awake
+setInterval(() => {
+  const https = require('https');
+  https.get('https://booking-system-backend-2t8v.onrender.com/api/config', (res) => {
+    console.log('Self-ping: ' + res.statusCode);
+  }).on('error', (e) => console.log('Self-ping error: ' + e.message));
+}, 10 * 60 * 1000); // Every 10 minutes
+
+
 app.listen(PORT, () => {
   console.log(`🏥 青苗綜合醫療診所預約系統 API v${VERSION}`);
   console.log(`   Server running on http://localhost:${PORT}`);
