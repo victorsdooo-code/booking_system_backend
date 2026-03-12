@@ -1,6 +1,6 @@
 # 🏥 青苗綜合醫療診所預約系統 API 文檔
 
-**Version:** v0.2.0 (Sprint 1)  
+**Version:** v0.3.0 (Sprint 2)  
 **Base URL:** `https://booking-system-backend-2t8v.onrender.com`  
 **Last Updated:** 2026-03-12
 
@@ -10,12 +10,13 @@
 
 1. [Overview](#overview)
 2. [Authentication](#authentication)
-3. [Clinics API](#clinics-api)
-4. [Services API](#services-api)
-5. [Doctors API](#doctors-api)
-6. [Appointments API](#appointments-api)
-7. [Admin API](#admin-api)
-8. [Error Handling](#error-handling)
+3. [SMS Verification API](#sms-verification-api) 🆕
+4. [Clinics API](#clinics-api)
+5. [Services API](#services-api)
+6. [Doctors API](#doctors-api)
+7. [Appointments API](#appointments-api)
+8. [Admin API](#admin-api)
+9. [Error Handling](#error-handling)
 
 ---
 
@@ -58,6 +59,124 @@ Admin endpoints require an `X-Admin-Token` header or `token` query parameter.
 ```bash
 curl -H "X-Admin-Token: admin123" \
   https://booking-system-backend-2t8v.onrender.com/api/admin/appointments
+```
+
+---
+
+## SMS Verification API 🆕
+
+### POST /api/sms/send
+Send a 6-digit verification code to a phone number.
+
+**Rate Limit:** 1 request per 60 seconds per phone number  
+**Code Expiry:** 5 minutes
+
+**Request Body:**
+```json
+{
+  "phone": "91234567"
+}
+```
+
+**Validation:**
+- Phone must be 8 digits (Hong Kong format: 5XXXXXXXX, 6XXXXXXXX, 7XXXXXXXX, 9XXXXXXXX)
+- Hyphens and spaces are allowed but will be removed
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "驗證碼已發送",
+  "expiresInSeconds": 300,
+  "phone": "91234567"
+}
+```
+
+**Error Responses:**
+
+**Rate Limited (429):**
+```json
+{
+  "success": false,
+  "error": "請求太頻密，請 60 秒後再試",
+  "retryAfter": 60
+}
+```
+
+**Invalid Phone (400):**
+```json
+{
+  "success": false,
+  "error": "電話號碼格式錯誤，請使用 8 位數字 (e.g. 91234567)"
+}
+```
+
+---
+
+### POST /api/sms/verify
+Verify the SMS code.
+
+**Request Body:**
+```json
+{
+  "phone": "91234567",
+  "code": "123456"
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "驗證成功",
+  "phone": "91234567",
+  "verifiedAt": "2026-03-12T12:30:00.000Z"
+}
+```
+
+**Error Responses:**
+
+**Not Found (404):**
+```json
+{
+  "success": false,
+  "error": "找不到驗證記錄，請重新發送驗證碼"
+}
+```
+
+**Expired (410):**
+```json
+{
+  "success": false,
+  "error": "驗證碼已過期，請重新發送",
+  "expired": true
+}
+```
+
+**Invalid Code (400):**
+```json
+{
+  "success": false,
+  "error": "驗證碼錯誤"
+}
+```
+
+---
+
+### GET /api/sms/status
+Check verification status for a phone number.
+
+**Query Parameters:**
+- `phone` (required) - Phone number
+
+**Response:**
+```json
+{
+  "success": true,
+  "hasPendingVerification": true,
+  "expiresInSeconds": 245,
+  "expired": false
+}
 ```
 
 ---
@@ -341,6 +460,195 @@ Employee login.
 }
 ```
 
+---
+
+### POST /api/admin/appointments 🆕
+Manually create an appointment (admin only).
+
+**Request Body:**
+```json
+{
+  "name": "張三",
+  "phone": "91234567",
+  "doctorId": 1,
+  "date": "2026-03-15",
+  "time": "09:00",
+  "serviceId": 2,
+  "clinicId": 1,
+  "notes": "行政預約",
+  "status": "confirmed",
+  "overrideSchedule": false
+}
+```
+
+**Required Fields:**
+- `name` - Patient name
+- `phone` - Contact phone
+- `doctorId` - Doctor ID
+- `date` - Appointment date (YYYY-MM-DD)
+- `time` - Appointment time (HH:MM)
+
+**Optional Fields:**
+- `serviceId` - Service ID
+- `clinicId` - Clinic ID (defaults to doctor's clinic)
+- `notes` - Additional notes
+- `status` - Initial status (default: "confirmed")
+- `overrideSchedule` - Boolean to override schedule conflicts (default: false)
+
+**Admin Override:**
+- Set `overrideSchedule: true` to book even if:
+  - Time slot conflicts with existing appointment
+  - Doctor has no schedule for that date
+
+**Success Response (201):**
+```json
+{
+  "success": true,
+  "message": "預約已成功建立",
+  "appointment": {
+    "id": 1,
+    "name": "張三",
+    "phone": "91234567",
+    "doctorId": 1,
+    "doctorName": "陳醫師",
+    "serviceId": 2,
+    "serviceName": "中醫師 - 治療",
+    "clinicId": 1,
+    "clinicName": "青苗綜合醫療診所",
+    "date": "2026-03-15",
+    "time": "09:00",
+    "duration": 45,
+    "status": "confirmed",
+    "notes": "行政預約",
+    "createdBy": "admin",
+    "createdAt": "2026-03-12T12:30:00.000Z"
+  }
+}
+```
+
+**Conflict Error (409):**
+```json
+{
+  "success": false,
+  "error": "此時段與現有預約衝突",
+  "conflicts": [
+    {
+      "id": 5,
+      "patientName": "李四",
+      "time": "09:00",
+      "duration": 45,
+      "overlap": "09:00-09:45",
+      "status": "confirmed"
+    }
+  ],
+  "hint": "設置 overrideSchedule=true 可強制建立"
+}
+```
+
+---
+
+### POST /api/admin/appointments/:id/status 🆕
+Change appointment status (admin only).
+
+**Request Body:**
+```json
+{
+  "status": "completed",
+  "reason": "Patient arrived and treatment completed"
+}
+```
+
+**Valid Statuses:**
+- `confirmed` - Appointment confirmed
+- `pending` - Awaiting confirmation
+- `cancelled` - Cancelled
+- `completed` - Treatment completed
+- `no-show` - Patient didn't show up
+
+**Status Transitions:**
+```
+confirmed → pending, cancelled, completed, no-show
+pending → confirmed, cancelled
+cancelled → confirmed (reactivate)
+completed → (terminal state, no transitions)
+no-show → confirmed (reactivate)
+```
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "預約狀態已更新",
+  "appointment": { ... },
+  "previousStatus": "confirmed",
+  "newStatus": "completed"
+}
+```
+
+**Invalid Transition Error (400):**
+```json
+{
+  "success": false,
+  "error": "不允許的狀態轉換：completed -> confirmed",
+  "allowedTransitions": [],
+  "currentStatus": "completed"
+}
+```
+
+---
+
+### GET /api/admin/audit-logs 🆕
+View audit trail (admin only).
+
+**Query Parameters:**
+- `entityType` (optional) - Filter by entity type (appointment, sms_verification, etc.)
+- `entityId` (optional) - Filter by entity ID
+- `action` (optional) - Filter by action type
+- `limit` (optional) - Max results (default: 100)
+
+**Example:**
+```bash
+curl -H "X-Admin-Token: admin123" \
+  "https://booking-system-backend-2t8v.onrender.com/api/admin/audit-logs?entityType=appointment&limit=50"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "total": 15,
+  "returned": 15,
+  "auditLogs": [
+    {
+      "id": 15,
+      "timestamp": "2026-03-12T12:30:00.000Z",
+      "action": "appointment_status_changed",
+      "entityType": "appointment",
+      "entityId": 5,
+      "details": {
+        "from": "confirmed",
+        "to": "completed",
+        "reason": "Treatment completed"
+      },
+      "adminId": "admin"
+    },
+    {
+      "id": 14,
+      "timestamp": "2026-03-12T12:25:00.000Z",
+      "action": "sms_verified",
+      "entityType": "sms_verification",
+      "entityId": 3,
+      "details": {
+        "phone": "91234567"
+      },
+      "adminId": "system"
+    }
+  ]
+}
+```
+
+---
+
 ### GET /api/admin/appointments
 Get all appointments with advanced filters (requires admin token).
 
@@ -485,6 +793,32 @@ curl -H "X-Admin-Token: admin123" \
 ---
 
 ## Changelog
+
+### v0.3.0 (2026-03-12) - Sprint 2 🆕
+
+**New Features:**
+- ✅ SMS Verification API (`POST /api/sms/send`, `POST /api/sms/verify`)
+- ✅ Rate limiting (1 SMS per 60 seconds per phone)
+- ✅ Code expiry (5 minutes)
+- ✅ Admin manual appointment creation (`POST /api/admin/appointments`)
+- ✅ Admin status change endpoint (`POST /api/admin/appointments/:id/status`)
+- ✅ Audit trail logging system
+- ✅ Admin audit logs endpoint (`GET /api/admin/audit-logs`)
+
+**Improvements:**
+- ✅ Double booking detection with time overlap check (not just exact match)
+- ✅ Admin override for schedule conflicts
+- ✅ Status transition validation
+- ✅ Status history tracking on appointments
+- ✅ Enhanced error responses with conflict details
+- ✅ Automatic cleanup of expired SMS codes (every 5 minutes)
+
+**Database:**
+- ✅ New table: `sms_verifications`
+- ✅ New table: `audit_logs`
+- ✅ Enhanced `appointments` table with audit fields
+
+---
 
 ### v0.2.0 (2026-03-12) - Sprint 1
 
