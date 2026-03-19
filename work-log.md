@@ -1,5 +1,22 @@
 # Developer 2 Work Log - Sprint 2
 
+## 2026-03-19 - Sprint 1 Backend Day 1
+**Time:** 23:45
+**Task:** Backend APIs + Database (MongoDB Migration)
+**Status:** Complete
+**Completed:**
+- ✅ Installed MongoDB driver
+- ✅ Created database connection module (models/db.js)
+- ✅ Created 7 MongoDB models: Clinic, Doctor, Service, DoctorService, Schedule, Appointment, SystemConfig
+- ✅ Created seed data script with 2 clinics, 10 doctors, 4 services
+- ✅ Created public API routes: GET /clinics, /doctors, /services, /slots, POST /appointments
+- ✅ Created admin API routes: CRUD for doctors, services, schedules, appointments
+- ✅ Rewrote server.js to use MongoDB and modular routes
+- ✅ Updated package.json with seed script
+- ✅ Updated .env.example with MongoDB configuration
+
+---
+
 ## Date: 2026-03-02
 
 ## Task: 青苗預約系統 - Backend Admin API Update

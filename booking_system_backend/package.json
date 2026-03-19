@@ -1,15 +1,17 @@
 {
   "name": "booking-system-backend",
-  "version": "0.1.0",
-  "description": "青苗綜合醫療診所預約系統 - Sprint 1 MVP",
+  "version": "0.3.0",
+  "description": "青苗綜合醫療診所預約系統 - Sprint 1 MVP with MongoDB",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "seed": "node seeds/seed.js"
   },
   "dependencies": {
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
-    "express": "^4.22.1"
+    "express": "^4.22.1",
+    "mongodb": "^6.17.0"
   }
 }
