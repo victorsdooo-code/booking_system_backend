@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: booking-system-backend
+    env: node
+    buildCommand: cd booking_system_backend && npm install
+    startCommand: cd booking_system_backend && node server.js
+    region: oregon
+    plan: free
+    branch: main
+    rootDir: booking_system_backend
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: MONGODB_URI
+        sync: false
+      - key: ADMIN_TOKEN
+        sync: false
