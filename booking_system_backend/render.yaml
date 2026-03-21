@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: booking-system-backend
+    env: node
+    rootDir: booking_system_backend
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
