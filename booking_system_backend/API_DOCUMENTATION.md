@@ -1,8 +1,9 @@
 # 🏥 青苗綜合醫療診所預約系統 API 文檔
 
-**Version:** v0.3.0 (Sprint 2)  
+**Version:** v0.3.0 (Sprint 1.5 - Admin Features Complete)  
 **Base URL:** `https://booking-system-backend-2t8v.onrender.com`  
-**Last Updated:** 2026-03-12
+**Local Testing:** `http://localhost:3000`  
+**Last Updated:** 2026-03-20
 
 ---
 
@@ -438,15 +439,329 @@ Cancel an appointment.
 
 ---
 
-## Admin API
+## Admin API 🔧
 
-### POST /api/admin/login
-Employee login.
+All admin endpoints require the `X-Admin-Token` header.
+
+**Authentication:**
+```bash
+X-Admin-Token: admin123
+```
+
+---
+
+### Clinic Management 🏥
+
+#### GET /api/admin/clinics
+List all clinics.
+
+**Response:**
+```json
+{
+  "success": true,
+  "count": 3,
+  "clinics": [
+    {
+      "_id": "69bc2e871bc84cffbfdd1009",
+      "name": "青苗綜合醫療診所",
+      "description": "",
+      "phone": "2525-1234",
+      "address": "香港中環皇后大道中 99 號中環中心 12 樓",
+      "businessHours": {
+        "open": "09:00",
+        "close": "18:00"
+      },
+      "isActive": true,
+      "createdAt": "2026-03-19T17:12:39.946Z",
+      "updatedAt": "2026-03-19T17:12:39.946Z"
+    }
+  ]
+}
+```
+
+#### POST /api/admin/clinics
+Create a new clinic.
 
 **Request Body:**
 ```json
 {
-  "password": "admin123"
+  "name": "青苗中藥房",
+  "description": "中藥配藥服務",
+  "phone": "2525-1235",
+  "address": "香港中環皇后大道中 99 號中環中心 11 樓",
+  "businessHours": {
+    "open": "09:00",
+    "close": "18:00"
+  },
+  "isActive": true
+}
+```
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "clinic": {
+    "_id": "69bc2e871bc84cffbfdd100a",
+    "name": "青苗中藥房",
+    "phone": "2525-1235",
+    "address": "香港中環皇后大道中 99 號中環中心 11 樓"
+  }
+}
+```
+
+#### PUT /api/admin/clinics/:id
+Update a clinic.
+
+**Request Body:**
+```json
+{
+  "name": "Updated Clinic Name",
+  "phone": "9999-9999"
+}
+```
+
+#### DELETE /api/admin/clinics/:id
+Delete a clinic.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "診所已刪除"
+}
+```
+
+---
+
+### Doctor Management 👨‍⚕️
+
+#### GET /api/admin/doctors
+List all doctors with their associated services.
+
+**Response:**
+```json
+{
+  "success": true,
+  "count": 10,
+  "doctors": [
+    {
+      "_id": "69bc2e881bc84cffbfdd1011",
+      "name": "張醫師",
+      "nameEn": "Dr. Cheung",
+      "type": "TCM",
+      "bio": "專長：骨科、痛症",
+      "avatar": "/avatars/cheung.jpg",
+      "isActive": true,
+      "serviceIds": ["69bc2e871bc84cffbfdd100b", "69bc2e871bc84cffbfdd100c"]
+    }
+  ]
+}
+```
+
+#### POST /api/admin/doctors
+Create a new doctor.
+
+**Request Body (JSON):**
+```json
+{
+  "name": "李醫師",
+  "nameEn": "Dr. Lee",
+  "type": "TCM",
+  "bio": "專長：腸胃、呼吸系統",
+  "avatar": "/avatars/lee.jpg",
+  "serviceIds": ["69bc2e871bc84cffbfdd100b"],
+  "isActive": true
+}
+```
+
+**Request Body (with Avatar Upload - multipart/form-data):**
+```bash
+curl -X POST http://localhost:3000/api/admin/doctors \
+  -H "X-Admin-Token: admin123" \
+  -F "name=李醫師" \
+  -F "type=TCM" \
+  -F "bio=專長：腸胃、呼吸系統" \
+  -F "avatar=@/path/to/avatar.jpg" \
+  -F "serviceIds[]=69bc2e871bc84cffbfdd100b"
+```
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "doctor": {
+    "_id": "69bc2e881bc84cffbfdd1012",
+    "name": "李醫師",
+    "nameEn": "Dr. Lee",
+    "type": "TCM",
+    "bio": "專長：腸胃、呼吸系統",
+    "avatar": "/uploads/avatars/avatar-1774013250680-386399185.png"
+  }
+}
+```
+
+#### PUT /api/admin/doctors/:id
+Update a doctor.
+
+**Request Body (JSON):**
+```json
+{
+  "name": "Updated Name",
+  "bio": "Updated bio",
+  "serviceIds": ["69bc2e871bc84cffbfdd100b", "69bc2e871bc84cffbfdd100c"]
+}
+```
+
+**Request Body (with Avatar Upload - multipart/form-data):**
+```bash
+curl -X PUT http://localhost:3000/api/admin/doctors/:id \
+  -H "X-Admin-Token: admin123" \
+  -F "name=Updated Name" \
+  -F "bio=Updated bio" \
+  -F "avatar=@/path/to/new-avatar.jpg" \
+  -F "serviceIds[]=69bc2e871bc84cffbfdd100b"
+```
+
+**Note:** If avatar file is uploaded, it will override the existing avatar. If no file is uploaded but `avatar` field is provided in form data, that URL will be used.
+
+#### DELETE /api/admin/doctors/:id
+Delete a doctor (also removes service associations).
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "醫生已刪除"
+}
+```
+
+---
+
+### Doctor Avatar Upload 📷
+
+#### POST /api/admin/upload/avatar
+Upload a doctor's avatar image.
+
+**Request:** `multipart/form-data`
+- `avatar` (file) - Image file (max 5MB, images only)
+
+**Example:**
+```bash
+curl -X POST http://localhost:3000/api/admin/upload/avatar \
+  -H "X-Admin-Token: admin123" \
+  -F "avatar=@/path/to/avatar.jpg"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "avatarUrl": "/uploads/avatars/avatar-1773970492069-142068928.png",
+  "message": "頭像上傳成功"
+}
+```
+
+---
+
+### Service Management 🏷️
+
+#### GET /api/admin/services
+List all services.
+
+#### POST /api/admin/services
+Create a new service.
+
+**Request Body:**
+```json
+{
+  "name": "新服務",
+  "nameEn": "New Service",
+  "duration": 30,
+  "isActive": true
+}
+```
+
+#### PUT /api/admin/services/:id
+Update a service.
+
+#### DELETE /api/admin/services/:id
+Delete a service.
+
+---
+
+### Schedule Management 📅
+
+#### GET /api/admin/schedules
+List schedules with optional filters.
+
+**Query Parameters:**
+- `doctorId` (optional) - Filter by doctor
+- `date` (optional) - Filter by date
+
+**Response:**
+```json
+{
+  "success": true,
+  "count": 49,
+  "schedules": [
+    {
+      "_id": "69bc2e881bc84cffbfdd1028",
+      "doctorId": "69bc2e881bc84cffbfdd100f",
+      "date": "2026-03-19",
+      "startTime": "09:00",
+      "endTime": "13:00",
+      "isOverride": false
+    }
+  ]
+}
+```
+
+#### POST /api/admin/schedules
+Create a schedule.
+
+**Request Body:**
+```json
+{
+  "doctorId": "69bc2e881bc84cffbfdd100f",
+  "date": "2026-03-20",
+  "startTime": "09:00",
+  "endTime": "18:00",
+  "isOverride": false
+}
+```
+
+#### PUT /api/admin/schedules/:id
+Update a schedule.
+
+**Request Body:**
+```json
+{
+  "startTime": "10:00",
+  "endTime": "17:00"
+}
+```
+
+#### DELETE /api/admin/schedules/:id
+Delete a schedule.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "排班已刪除"
+}
+```
+
+#### POST /api/admin/schedules/batch-copy 🆕
+Copy schedules from a source date to multiple target dates.
+
+**Request Body:**
+```json
+{
+  "sourceDate": "2026-03-20",
+  "targetDates": ["2026-03-26", "2026-03-27", "2026-03-28"],
+  "doctorId": "69bc2e881bc84cffbfdd100f"
 }
 ```
 
@@ -454,11 +769,112 @@ Employee login.
 ```json
 {
   "success": true,
-  "message": "登入成功",
-  "token": "admin123",
-  "expiresIn": "24h"
+  "message": "成功複製 2 個排班",
+  "count": 2,
+  "schedules": [
+    {
+      "_id": "69bca444fd84850b6275d718",
+      "doctorId": "69bc2e881bc84cffbfdd100f",
+      "date": "2026-03-26",
+      "startTime": "09:00",
+      "endTime": "18:00",
+      "isOverride": false
+    }
+  ]
 }
 ```
+
+---
+
+### Appointment Management 📋
+
+#### GET /api/admin/appointments
+List all appointments with advanced filters.
+
+**Query Parameters:**
+- `doctorId` (optional) - Filter by doctor
+- `clinicId` (optional) - Filter by clinic
+- `date` (optional) - Filter by date
+- `status` (optional) - Filter by status (pending, confirmed, cancelled)
+- `search` (optional) - Search by patient name or phone
+- `sort` (optional) - Sort field (e.g., date, createdAt)
+- `order` (optional) - Sort order (asc, desc)
+
+#### GET /api/admin/appointments/:id
+Get appointment by ID.
+
+#### PUT /api/admin/appointments/:id
+Update an appointment.
+
+#### PUT /api/admin/appointments/:id/status
+Update appointment status.
+
+**Request Body:**
+```json
+{
+  "status": "confirmed"
+}
+```
+
+**Valid statuses:** `pending`, `confirmed`, `cancelled`
+
+#### DELETE /api/admin/appointments/:id
+Cancel/delete an appointment.
+
+---
+
+### System Config ⚙️
+
+#### GET /api/admin/system-config 🆕
+Get all system configuration.
+
+**Response:**
+```json
+{
+  "success": true,
+  "config": {
+    "bookingWindowDays": 30
+  }
+}
+```
+
+#### PUT /api/admin/system-config 🆕
+Update system configuration.
+
+**Request Body:**
+```json
+{
+  "bookingWindowDays": 60,
+  "maxAppointmentsPerDay": 20
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "系統配置已更新",
+  "config": {
+    "bookingWindowDays": {
+      "key": "bookingWindowDays",
+      "value": 60
+    },
+    "maxAppointmentsPerDay": {
+      "key": "maxAppointmentsPerDay",
+      "value": 20
+    }
+  }
+}
+```
+
+---
+
+### Legacy Config Routes (Deprecated)
+
+The following routes are kept for backward compatibility but will be removed in future versions:
+
+- `GET /api/admin/config` → Use `GET /api/admin/system-config`
+- `PUT /api/admin/config/:key` → Use `PUT /api/admin/system-config`
 
 ---
 
@@ -793,6 +1209,46 @@ curl -H "X-Admin-Token: admin123" \
 ---
 
 ## Changelog
+
+### v0.3.0 (2026-03-20) - Sprint 1.5: Admin Features Complete 🆕
+
+**New Admin APIs:**
+- ✅ Clinic Management (CRUD): `GET/POST/PUT/DELETE /api/admin/clinics`
+- ✅ Doctor Management (CRUD): `GET/POST/PUT/DELETE /api/admin/doctors`
+- ✅ Doctor Avatar Upload: `POST /api/admin/upload/avatar` (multipart/form-data, max 5MB)
+- ✅ Service Management (CRUD): `GET/POST/PUT/DELETE /api/admin/services`
+- ✅ Schedule Management (CRUD): `GET/POST/PUT/DELETE /api/admin/schedules`
+- ✅ Batch Schedule Copy: `POST /api/admin/schedules/batch-copy` (copy schedules to multiple dates)
+- ✅ System Config: `GET/PUT /api/admin/system-config`
+- ✅ Enhanced Appointment Management with search, sort, and status updates
+
+**Improvements:**
+- ✅ All admin routes properly protected with authentication middleware
+- ✅ Consistent error handling and logging
+- ✅ Service association management for doctors
+- ✅ File upload with validation (image types only, 5MB limit)
+- ✅ Batch operations for efficient schedule management
+
+**Known Issues:**
+- None - All endpoints tested and working ✅
+
+**Test Results (2026-03-20 21:30):**
+- ✅ GET /api/admin/clinics - Returns JSON with clinic list
+- ✅ POST /api/admin/clinics - Creates clinic successfully
+- ✅ PUT /api/admin/clinics/:id - Updates clinic successfully
+- ✅ DELETE /api/admin/clinics/:id - Deletes clinic successfully
+- ✅ GET /api/admin/doctors - Returns JSON with doctor list and serviceIds
+- ✅ POST /api/admin/doctors - Creates doctor (supports avatar upload via multipart/form-data)
+- ✅ PUT /api/admin/doctors/:id - Updates doctor (supports avatar upload via multipart/form-data)
+- ✅ DELETE /api/admin/doctors/:id - Deletes doctor and service associations
+- ✅ GET /api/admin/services - Returns JSON with service list
+- ✅ POST /api/admin/services - Creates service successfully
+- ✅ PUT /api/admin/services/:id - Updates service successfully
+- ✅ DELETE /api/admin/services/:id - Deletes service successfully
+- ✅ GET /api/admin/system-config - Returns system configuration
+- ✅ PUT /api/admin/system-config - Updates system configuration
+
+---
 
 ### v0.3.0 (2026-03-12) - Sprint 2 🆕
 

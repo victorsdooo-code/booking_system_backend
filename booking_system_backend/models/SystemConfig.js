@@ -2,7 +2,12 @@ const { getDB } = require('./db');
 
 const COLLECTION = 'system_config';
 
-// Schema: { bookingWindowDays: 30 }
+// Schema: { 
+//   bookingWindowDays: 30,
+//   customMessages: {
+//     phoneInquiryPrompt: "如需電話查詢請致電 XXXX-XXXX"
+//   }
+// }
 
 async function getConfig(key) {
   const db = getDB();
@@ -34,4 +39,17 @@ async function getBookingWindowDays() {
   return days !== null ? days : 30; // default 30 days
 }
 
-module.exports = { getConfig, setConfig, getAllConfig, getBookingWindowDays };
+async function getCustomMessages() {
+  const messages = await getConfig('customMessages');
+  return messages || {
+    phoneInquiryPrompt: '如需電話查詢請致電 XXXX-XXXX'
+  };
+}
+
+module.exports = { 
+  getConfig, 
+  setConfig, 
+  getAllConfig, 
+  getBookingWindowDays,
+  getCustomMessages
+};

@@ -59,4 +59,10 @@ async function updateDoctorServices(doctorId, serviceIds) {
   return getServicesByDoctor(doctorId);
 }
 
-module.exports = { getAllDoctorServices, getServicesByDoctor, getDoctorsByService, addDoctorService, removeDoctorService, updateDoctorServices };
+async function removeDoctorServiceById(id) {
+  const db = getDB();
+  await db.collection(COLLECTION).deleteOne({ _id: new ObjectId(id) });
+  return true;
+}
+
+module.exports = { getAllDoctorServices, getServicesByDoctor, getDoctorsByService, addDoctorService, removeDoctorService, updateDoctorServices, removeDoctorServiceById };

@@ -6,6 +6,7 @@ const Clinic = require('./Clinic');
 const Doctor = require('./Doctor');
 const Service = require('./Service');
 const DoctorService = require('./DoctorService');
+const DoctorType = require('./DoctorType');
 const Schedule = require('./Schedule');
 const Appointment = require('./Appointment');
 const SystemConfig = require('./SystemConfig');
@@ -18,6 +19,7 @@ module.exports = {
   Doctor,
   Service,
   DoctorService,
+  DoctorType,
   Schedule,
   Appointment,
   SystemConfig

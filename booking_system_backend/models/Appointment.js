@@ -5,7 +5,7 @@ const COLLECTION = 'appointments';
 
 // Schema: { clinicId, doctorId, serviceId, date, time, status: 'pending'/'confirmed'/'cancelled', patientName, patientPhone, notes }
 
-async function getAllAppointments(filters = {}) {
+async function getAllAppointments(filters = {}, options = {}) {
   const db = getDB();
   const query = {};
   
@@ -25,7 +25,30 @@ async function getAllAppointments(filters = {}) {
     query.patientPhone = filters.patientPhone;
   }
   
-  return await db.collection(COLLECTION).find(query).sort({ date: 1, time: 1 }).toArray();
+  // Search functionality (NEW - Sprint 1.5)
+  if (options.search) {
+    const searchRegex = new RegExp(options.search, 'i');
+    query.$or = [
+      { patientName: searchRegex },
+      { patientPhone: searchRegex },
+      { notes: searchRegex }
+    ];
+  }
+  
+  // Sort functionality (NEW - Sprint 1.5)
+  let sortQuery = { date: 1, time: 1 }; // default sort
+  if (options.sort) {
+    const sortOrder = options.order === 'desc' ? -1 : 1;
+    if (options.sort === 'date') {
+      sortQuery = { date: sortOrder, time: sortOrder };
+    } else if (options.sort === 'status') {
+      sortQuery = { status: sortOrder };
+    } else if (options.sort === 'patientName') {
+      sortQuery = { patientName: sortOrder };
+    }
+  }
+  
+  return await db.collection(COLLECTION).find(query).sort(sortQuery).toArray();
 }
 
 async function getAppointmentById(id) {

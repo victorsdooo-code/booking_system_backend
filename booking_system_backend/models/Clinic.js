@@ -3,7 +3,14 @@ const { ObjectId } = require('mongodb');
 
 const COLLECTION = 'clinics';
 
-// Schema: { name, address, phone, isActive }
+// Schema: { 
+//   name: String,
+//   description: String,
+//   phone: String,
+//   address: String,
+//   businessHours: { open: String, close: String },
+//   isActive: Boolean
+// }
 
 async function getAllClinics() {
   const db = getDB();
@@ -18,7 +25,11 @@ async function getClinicById(id) {
 async function createClinic(clinic) {
   const db = getDB();
   const result = await db.collection(COLLECTION).insertOne({
-    ...clinic,
+    name: clinic.name,
+    description: clinic.description || '',
+    phone: clinic.phone || '',
+    address: clinic.address || '',
+    businessHours: clinic.businessHours || { open: '09:00', close: '18:00' },
     isActive: clinic.isActive !== undefined ? clinic.isActive : true,
     createdAt: new Date(),
     updatedAt: new Date()
@@ -28,9 +39,10 @@ async function createClinic(clinic) {
 
 async function updateClinic(id, updates) {
   const db = getDB();
+  const updateData = { ...updates, updatedAt: new Date() };
   await db.collection(COLLECTION).updateOne(
     { _id: new ObjectId(id) },
-    { $set: { ...updates, updatedAt: new Date() } }
+    { $set: updateData }
   );
   return getClinicById(id);
 }
