@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 
 const db = require('./models/db');
 const adminRoutes = require('./routes/admin');
+const authenticateAdmin = require('./middleware/authenticateAdmin');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -31,8 +32,8 @@ db.connect()
   });
 
 // Routes
-// Admin routes - ALL require authentication (auth applied in routes/admin.js)
-app.use('/api/admin', adminRoutes);
+// Admin routes - ALL require authentication
+app.use('/api/admin', authenticateAdmin, adminRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

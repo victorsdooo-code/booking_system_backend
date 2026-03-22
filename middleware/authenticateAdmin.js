@@ -19,7 +19,4 @@ function authenticateAdmin(req, res, next) {
   next();
 }
 
-module.exports = {
-  authenticateAdmin,
-  ADMIN_TOKEN
-};
+module.exports = authenticateAdmin;

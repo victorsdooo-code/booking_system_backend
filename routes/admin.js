@@ -10,7 +10,6 @@ const {
   Schedule,
   Appointment
 } = require('../models');
-const { authenticateAdmin } = require('../middleware/authenticateAdmin');
 
 // Validation middleware
 const validate = (req, res, next) => {
@@ -20,9 +19,6 @@ const validate = (req, res, next) => {
   }
   next();
 };
-
-// Apply authentication to all admin routes
-router.use(authenticateAdmin);
 
 // ============================================
 // CLINIC ENDPOINTS (4 endpoints)
