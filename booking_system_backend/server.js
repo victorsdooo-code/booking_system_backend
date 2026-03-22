@@ -73,7 +73,22 @@ app.use((err, req, res, next) => {
 
 async function startServer() {
   try {
+    // Check required environment variables
+    const mongoUri = process.env.MONGODB_URI;
+    if (!mongoUri) {
+      console.error('❌ ERROR: MONGODB_URI environment variable is not set!');
+      console.error('   Please set MONGODB_URI in your environment or .env file');
+      console.error('   Example: MONGODB_URI=mongodb://localhost:27017');
+      process.exit(1);
+    }
+    
+    console.log('📋 Environment check:');
+    console.log('   MONGODB_URI: ✓ configured');
+    console.log('   PORT:', PORT);
+    console.log('   NODE_ENV:', process.env.NODE_ENV || 'development');
+    
     // Connect to MongoDB
+    console.log('🔗 Connecting to MongoDB...');
     await connectDB();
     
     // Start server
@@ -91,7 +106,13 @@ async function startServer() {
       `);
     });
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    console.error('❌ Failed to start server:', error.message);
+    console.error('   Stack:', error.stack);
+    console.error('');
+    console.error('💡 Common causes:');
+    console.error('   1. MongoDB is not running or not accessible');
+    console.error('   2. MONGODB_URI is incorrect');
+    console.error('   3. Network connectivity issues');
     process.exit(1);
   }
 }

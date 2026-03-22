@@ -14,5 +14,8 @@ services:
         value: 3000
       - key: MONGODB_URI
         sync: false
-      - key: ADMIN_TOKEN
-        sync: false
+        # REQUIRED: Set your MongoDB connection string in Render dashboard
+        # Example: mongodb+srv://user:pass@cluster.mongodb.net/qingyiu_clinic
+      - key: ADMIN_PASSWORD
+        value: admin123
+        # NOTE: Change this in production! Set in Render dashboard for security

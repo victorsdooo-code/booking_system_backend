@@ -10,13 +10,22 @@ async function connectDB() {
   if (db) return db;
 
   try {
-    client = new MongoClient(MONGODB_URI);
+    console.log('🔗 MongoDB URI:', MONGODB_URI.replace(/\/\/([^:]+):([^@]+)@/, '//$1:***@')); // Hide password in logs
+    client = new MongoClient(MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000, // Timeout after 5 seconds
+      socketTimeoutMS: 45000,
+    });
     await client.connect();
     db = client.db(DB_NAME);
     console.log(`✅ Connected to MongoDB: ${DB_NAME}`);
     return db;
   } catch (error) {
-    console.error('❌ MongoDB connection error:', error);
+    console.error('❌ MongoDB connection failed:', error.message);
+    console.error('   URI:', MONGODB_URI.replace(/\/\/([^:]+):([^@]+)@/, '//$1:***@'));
+    console.error('   Common fixes:');
+    console.error('   - Check if MongoDB is running');
+    console.error('   - Verify MONGODB_URI is correct');
+    console.error('   - For Render: Set MONGODB_URI in environment variables');
     throw error;
   }
 }
