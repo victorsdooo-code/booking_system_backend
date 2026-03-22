@@ -384,7 +384,7 @@ router.get('/schedules/available-slots', authenticateAdmin, async (req, res) => 
     }
     
     // Get day of week
-    const dayOfWeek = new Date(date).toLocaleDateString('en-US', { weekday: 'lowercase' });
+    const dayOfWeek = new Date(date).toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
     const businessHours = clinic.businessHours[dayOfWeek];
     
     if (!businessHours || !businessHours.isOpen) {
