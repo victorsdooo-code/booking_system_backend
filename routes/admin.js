@@ -343,16 +343,16 @@ router.get('/doctors/:id/services', async (req, res) => {
 // GET /api/admin/schedules - Get all schedules
 router.get('/schedules', async (req, res) => {
   try {
-    const { doctor, date, clinic } = req.query;
+    const { doctorId, date, clinicId } = req.query;
     const filter = {};
     
-    if (doctor) filter.doctor = doctor;
+    if (doctorId) filter.doctorId = doctorId;
     if (date) filter.date = new Date(date);
-    if (clinic) filter.clinic = clinic;
+    if (clinicId) filter.clinicId = clinicId;
     
     const schedules = await Schedule.find(filter)
-      .populate('doctor', 'name specialty')
-      .populate('clinic', 'name')
+      .populate('doctorId', 'name specialty')
+      .populate('clinicId', 'name')
       .sort({ date: 1, startTime: 1 });
     res.json({ success: true, data: schedules });
   } catch (error) {
@@ -364,8 +364,8 @@ router.get('/schedules', async (req, res) => {
 router.get('/schedules/:id', async (req, res) => {
   try {
     const schedule = await Schedule.findById(req.params.id)
-      .populate('doctor', 'name specialty')
-      .populate('clinic', 'name');
+      .populate('doctorId', 'name specialty')
+      .populate('clinicId', 'name');
     if (!schedule) {
       return res.status(404).json({ success: false, error: 'Schedule not found' });
     }
@@ -377,11 +377,11 @@ router.get('/schedules/:id', async (req, res) => {
 
 // POST /api/admin/schedules - Create schedule
 router.post('/schedules', [
-  body('doctor').isMongoId(),
+  body('doctorId').isMongoId(),
   body('date').isISO8601(),
   body('startTime').notEmpty(),
   body('endTime').notEmpty(),
-  body('clinic').isMongoId()
+  body('clinicId').isMongoId()
 ], validate, async (req, res) => {
   try {
     const schedule = new Schedule(req.body);
@@ -399,7 +399,7 @@ router.put('/schedules/:id', async (req, res) => {
       req.params.id,
       req.body,
       { new: true, runValidators: true }
-    ).populate('doctor', 'name specialty').populate('clinic', 'name');
+    ).populate('doctorId', 'name specialty').populate('clinicId', 'name');
     if (!schedule) {
       return res.status(404).json({ success: false, error: 'Schedule not found' });
     }
@@ -472,6 +472,98 @@ router.post('/schedules/batch-copy', async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+// GET /api/admin/schedules/available-slots?clinicId=&date=&doctorId=
+router.get('/schedules/available-slots', authenticateAdmin, async (req, res) => {
+  try {
+    const { clinicId, date, doctorId } = req.query;
+    
+    // Get clinic business hours
+    const clinic = await Clinic.findById(clinicId);
+    if (!clinic) {
+      return res.status(404).json({ success: false, error: 'Clinic not found' });
+    }
+    
+    // Get day of week
+    const dayOfWeek = new Date(date).toLocaleDateString('en-US', { weekday: 'lowercase' });
+    const businessHours = clinic.businessHours[dayOfWeek];
+    
+    if (!businessHours || !businessHours.isOpen) {
+      return res.json({ 
+        success: true, 
+        available: false, 
+        message: 'Clinic is closed on this day',
+        slots: [] 
+      });
+    }
+    
+    // Get existing schedules for this date/doctor
+    const existingSchedules = await Schedule.find({
+      clinicId,
+      doctorId,
+      date: new Date(date),
+      isActive: true
+    });
+    
+    // Generate available time slots based on business hours
+    const slots = generateTimeSlots(businessHours.open, businessHours.close, existingSchedules);
+    
+    res.json({
+      success: true,
+      available: true,
+      businessHours,
+      slots
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Helper function to generate time slots
+function generateTimeSlots(openTime, closeTime, existingSchedules) {
+  const slots = [];
+  const slotDuration = 30; // 30-minute slots
+  
+  // Parse open and close times
+  const [openHour, openMinute] = openTime.split(':').map(Number);
+  const [closeHour, closeMinute] = closeTime.split(':').map(Number);
+  
+  // Create booked slots set from existing schedules
+  const bookedSlots = new Set();
+  existingSchedules.forEach(schedule => {
+    const [startHour, startMinute] = schedule.startTime.split(':').map(Number);
+    const [endHour, endMinute] = schedule.endTime.split(':').map(Number);
+    
+    // Mark all slots within this schedule as booked
+    let currentTime = startHour * 60 + startMinute;
+    const endTime = endHour * 60 + endMinute;
+    
+    while (currentTime < endTime) {
+      bookedSlots.add(currentTime);
+      currentTime += slotDuration;
+    }
+  });
+  
+  // Generate available slots
+  let currentTime = openHour * 60 + openMinute;
+  const closeTimeInMinutes = closeHour * 60 + closeMinute;
+  
+  while (currentTime + slotDuration <= closeTimeInMinutes) {
+    const timeString = `${String(Math.floor(currentTime / 60)).padStart(2, '0')}:${String(currentTime % 60).padStart(2, '0')}`;
+    
+    if (!bookedSlots.has(currentTime)) {
+      slots.push({
+        startTime: timeString,
+        endTime: `${String(Math.floor((currentTime + slotDuration) / 60)).padStart(2, '0')}:${String((currentTime + slotDuration) % 60).padStart(2, '0')}`,
+        available: true
+      });
+    }
+    
+    currentTime += slotDuration;
+  }
+  
+  return slots;
+}
 
 // ============================================
 // APPOINTMENT ENDPOINTS (6 endpoints)

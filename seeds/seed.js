@@ -35,6 +35,15 @@ const seedData = async () => {
         saturday: { open: '09:00', close: '13:00' },
         sunday: { open: null, close: null }
       },
+      businessHours: {
+        monday: { open: '09:00', close: '18:00', isOpen: true },
+        tuesday: { open: '09:00', close: '18:00', isOpen: true },
+        wednesday: { open: '09:00', close: '18:00', isOpen: true },
+        thursday: { open: '09:00', close: '18:00', isOpen: true },
+        friday: { open: '09:00', close: '18:00', isOpen: true },
+        saturday: { open: '09:00', close: '13:00', isOpen: true },
+        sunday: { open: '00:00', close: '00:00', isOpen: false }
+      },
       isActive: true
     });
     console.log(`✅ Clinic created: ${clinic.name}`);
@@ -156,39 +165,39 @@ const seedData = async () => {
       
       // Morning schedule (9:00-12:00)
       schedules.push({
-        doctor: doctors[0]._id,
+        doctorId: doctors[0]._id,
         date: date,
         startTime: '09:00',
         endTime: '12:00',
-        clinic: clinic._id,
+        clinicId: clinic._id,
         isAvailable: true
       });
       
       // Afternoon schedule (14:00-18:00)
       schedules.push({
-        doctor: doctors[0]._id,
+        doctorId: doctors[0]._id,
         date: date,
         startTime: '14:00',
         endTime: '18:00',
-        clinic: clinic._id,
+        clinicId: clinic._id,
         isAvailable: true
       });
       
       schedules.push({
-        doctor: doctors[1]._id,
+        doctorId: doctors[1]._id,
         date: date,
         startTime: '09:00',
         endTime: '13:00',
-        clinic: clinic._id,
+        clinicId: clinic._id,
         isAvailable: true
       });
       
       schedules.push({
-        doctor: doctors[2]._id,
+        doctorId: doctors[2]._id,
         date: date,
         startTime: '14:00',
         endTime: '18:00',
-        clinic: clinic._id,
+        clinicId: clinic._id,
         isAvailable: true
       });
     }

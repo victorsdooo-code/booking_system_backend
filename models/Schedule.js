@@ -1,7 +1,12 @@
 const mongoose = require('mongoose');
 
 const scheduleSchema = new mongoose.Schema({
-  doctor: {
+  clinicId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Clinic',
+    required: [true, 'Clinic is required']
+  },
+  doctorId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Doctor',
     required: [true, 'Doctor is required']
@@ -30,10 +35,9 @@ const scheduleSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
-  clinic: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Clinic',
-    required: [true, 'Clinic is required']
+  isActive: {
+    type: Boolean,
+    default: true
   }
 }, {
   timestamps: true
