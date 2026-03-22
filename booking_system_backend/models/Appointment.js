@@ -3,7 +3,7 @@ const { ObjectId } = require('mongodb');
 
 const COLLECTION = 'appointments';
 
-// Schema: { clinicId, doctorId, serviceId, date, time, status: 'pending'/'confirmed'/'cancelled', patientName, patientPhone, notes }
+// Schema: { clinicId (ref), doctorId (ref), serviceId (ref), patientName, patientTitle, phone, date, time, status (pending/confirmed/cancelled), notes, source (admin/web), createdAt }
 
 async function getAllAppointments(filters = {}, options = {}) {
   const db = getDB();
@@ -21,21 +21,21 @@ async function getAllAppointments(filters = {}, options = {}) {
   if (filters.status) {
     query.status = filters.status;
   }
-  if (filters.patientPhone) {
-    query.patientPhone = filters.patientPhone;
+  if (filters.phone) {
+    query.phone = filters.phone;
   }
   
-  // Search functionality (NEW - Sprint 1.5)
+  // Search functionality
   if (options.search) {
     const searchRegex = new RegExp(options.search, 'i');
     query.$or = [
       { patientName: searchRegex },
-      { patientPhone: searchRegex },
+      { phone: searchRegex },
       { notes: searchRegex }
     ];
   }
   
-  // Sort functionality (NEW - Sprint 1.5)
+  // Sort functionality
   let sortQuery = { date: 1, time: 1 }; // default sort
   if (options.sort) {
     const sortOrder = options.order === 'desc' ? -1 : 1;
@@ -58,26 +58,28 @@ async function getAppointmentById(id) {
 
 async function createAppointment(appointment) {
   const db = getDB();
-  const result = await db.collection(COLLECTION).insertOne({
+  const insertData = {
     clinicId: new ObjectId(appointment.clinicId),
     doctorId: new ObjectId(appointment.doctorId),
     serviceId: new ObjectId(appointment.serviceId),
+    patientName: appointment.patientName,
+    patientTitle: appointment.patientTitle || '',
+    phone: appointment.phone,
     date: appointment.date,
     time: appointment.time,
     status: appointment.status || 'pending',
-    patientName: appointment.patientName,
-    patientPhone: appointment.patientPhone,
     notes: appointment.notes || '',
-    duration: appointment.duration || 45,
-    createdAt: new Date(),
-    updatedAt: new Date()
-  });
+    source: appointment.source || 'web',
+    createdAt: new Date()
+  };
+  
+  const result = await db.collection(COLLECTION).insertOne(insertData);
   return { _id: result.insertedId, ...appointment };
 }
 
 async function updateAppointment(id, updates) {
   const db = getDB();
-  const updateData = { ...updates, updatedAt: new Date() };
+  const updateData = { ...updates };
   
   // Convert IDs if present
   if (updates.clinicId) updateData.clinicId = new ObjectId(updates.clinicId);
@@ -95,7 +97,7 @@ async function updateAppointmentStatus(id, status) {
   const db = getDB();
   await db.collection(COLLECTION).updateOne(
     { _id: new ObjectId(id) },
-    { $set: { status, updatedAt: new Date() } }
+    { $set: { status } }
   );
   return getAppointmentById(id);
 }

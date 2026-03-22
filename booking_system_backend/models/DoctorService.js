@@ -3,7 +3,7 @@ const { ObjectId } = require('mongodb');
 
 const COLLECTION = 'doctor_services';
 
-// Schema: { doctorId, serviceId }
+// Schema: { doctorId (ref), serviceId (ref), isActive }
 
 async function getAllDoctorServices() {
   const db = getDB();
@@ -22,14 +22,15 @@ async function getDoctorsByService(serviceId) {
   return results.map(ds => ds.doctorId);
 }
 
-async function addDoctorService(doctorId, serviceId) {
+async function addDoctorService(doctorId, serviceId, isActive = true) {
   const db = getDB();
   const result = await db.collection(COLLECTION).insertOne({
     doctorId: new ObjectId(doctorId),
     serviceId: new ObjectId(serviceId),
+    isActive: isActive,
     createdAt: new Date()
   });
-  return { _id: result.insertedId, doctorId, serviceId };
+  return { _id: result.insertedId, doctorId, serviceId, isActive };
 }
 
 async function removeDoctorService(doctorId, serviceId) {
@@ -51,6 +52,7 @@ async function updateDoctorServices(doctorId, serviceIds) {
     const inserts = serviceIds.map(serviceId => ({
       doctorId: new ObjectId(doctorId),
       serviceId: new ObjectId(serviceId),
+      isActive: true,
       createdAt: new Date()
     }));
     await db.collection(COLLECTION).insertMany(inserts);
@@ -65,4 +67,28 @@ async function removeDoctorServiceById(id) {
   return true;
 }
 
-module.exports = { getAllDoctorServices, getServicesByDoctor, getDoctorsByService, addDoctorService, removeDoctorService, updateDoctorServices, removeDoctorServiceById };
+async function updateDoctorService(id, updates) {
+  const db = getDB();
+  await db.collection(COLLECTION).updateOne(
+    { _id: new ObjectId(id) },
+    { $set: updates }
+  );
+  return getDoctorServiceById(id);
+}
+
+async function getDoctorServiceById(id) {
+  const db = getDB();
+  return await db.collection(COLLECTION).findOne({ _id: new ObjectId(id) });
+}
+
+module.exports = { 
+  getAllDoctorServices, 
+  getServicesByDoctor, 
+  getDoctorsByService, 
+  addDoctorService, 
+  removeDoctorService, 
+  updateDoctorServices, 
+  removeDoctorServiceById,
+  updateDoctorService,
+  getDoctorServiceById
+};

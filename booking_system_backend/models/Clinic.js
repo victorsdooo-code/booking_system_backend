@@ -6,10 +6,12 @@ const COLLECTION = 'clinics';
 // Schema: { 
 //   name: String,
 //   description: String,
+//   image: String,
 //   phone: String,
 //   address: String,
 //   businessHours: { open: String, close: String },
-//   isActive: Boolean
+//   isActive: Boolean,
+//   bookingWindowDays: Number (default 30)
 // }
 
 async function getAllClinics() {
@@ -27,10 +29,12 @@ async function createClinic(clinic) {
   const result = await db.collection(COLLECTION).insertOne({
     name: clinic.name,
     description: clinic.description || '',
+    image: clinic.image || '',
     phone: clinic.phone || '',
     address: clinic.address || '',
     businessHours: clinic.businessHours || { open: '09:00', close: '18:00' },
     isActive: clinic.isActive !== undefined ? clinic.isActive : true,
+    bookingWindowDays: clinic.bookingWindowDays || 30,
     createdAt: new Date(),
     updatedAt: new Date()
   });

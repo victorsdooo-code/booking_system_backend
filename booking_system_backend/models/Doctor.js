@@ -3,7 +3,7 @@ const { ObjectId } = require('mongodb');
 
 const COLLECTION = 'doctors';
 
-// Schema: { name, type: 'TCM'/'Physio'/'Bone', avatar, bio, isActive }
+// Schema: { name, avatar, description, type: 'TCM'/'Physio'/'Bone', isActive, createdAt }
 
 async function getAllDoctors(filters = {}) {
   const db = getDB();
@@ -30,19 +30,26 @@ async function getDoctorById(id) {
 async function createDoctor(doctor) {
   const db = getDB();
   const result = await db.collection(COLLECTION).insertOne({
-    ...doctor,
+    name: doctor.name,
+    avatar: doctor.avatar || '',
+    description: doctor.description || doctor.bio || '',
+    type: doctor.type,
     isActive: doctor.isActive !== undefined ? doctor.isActive : true,
-    createdAt: new Date(),
-    updatedAt: new Date()
+    createdAt: new Date()
   });
   return { _id: result.insertedId, ...doctor };
 }
 
 async function updateDoctor(id, updates) {
   const db = getDB();
+  // Map bio to description for backwards compatibility
+  if (updates.bio) {
+    updates.description = updates.bio;
+    delete updates.bio;
+  }
   await db.collection(COLLECTION).updateOne(
     { _id: new ObjectId(id) },
-    { $set: { ...updates, updatedAt: new Date() } }
+    { $set: updates }
   );
   return getDoctorById(id);
 }

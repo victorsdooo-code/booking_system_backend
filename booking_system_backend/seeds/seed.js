@@ -20,43 +20,49 @@ async function seed() {
     const clinics = await Promise.all([
       Clinic.createClinic({
         name: "青苗綜合醫療診所",
-        nameEn: "Ching Yiu Integrated Medical Clinic",
+        description: "提供中醫、物理治療、正骨等綜合醫療服務",
+        image: "/images/clinic-main.jpg",
+        phone: "2525-1234",
         address: "香港中環皇后大道中 99 號中環中心 12 樓",
-        phone: "2525-1234"
+        businessHours: { open: "09:00", close: "18:00" },
+        bookingWindowDays: 30
       }),
       Clinic.createClinic({
         name: "青苗中藥房",
-        nameEn: "Ching Yiu Chinese Medicine Pharmacy",
+        description: "專業中藥配藥及諮詢服務",
+        image: "/images/clinic-pharmacy.jpg",
+        phone: "2525-1235",
         address: "香港中環皇后大道中 99 號中環中心 11 樓",
-        phone: "2525-1235"
+        businessHours: { open: "09:00", close: "18:00" },
+        bookingWindowDays: 30
       })
     ]);
     console.log(`✅ Seeded ${clinics.length} clinics`);
 
     // 2. Seed Services (4 服務)
     const services = await Promise.all([
-      Service.createService({ name: "問診", nameEn: "Consultation", duration: 15 }),
-      Service.createService({ name: "治療", nameEn: "Treatment", duration: 45 }),
-      Service.createService({ name: "物理治療", nameEn: "Physiotherapy", duration: 60 }),
-      Service.createService({ name: "中醫正骨", nameEn: "TCM Bone Setting", duration: 60 })
+      Service.createService({ name: "問診", duration: 15, price: 200 }),
+      Service.createService({ name: "治療", duration: 45, price: 500 }),
+      Service.createService({ name: "物理治療", duration: 60, price: 600 }),
+      Service.createService({ name: "中醫正骨", duration: 60, price: 600 })
     ]);
     console.log(`✅ Seeded ${services.length} services`);
 
     // 3. Seed Doctors (10 醫生)
     const doctors = await Promise.all([
       // TCM Doctors (5)
-      Doctor.createDoctor({ name: "陳醫師", nameEn: "Dr. Chan", type: "TCM", bio: "專長：內科、婦科", avatar: "/avatars/chan.jpg" }),
-      Doctor.createDoctor({ name: "李醫師", nameEn: "Dr. Lee", type: "TCM", bio: "專長：兒科、皮膚科", avatar: "/avatars/lee.jpg" }),
-      Doctor.createDoctor({ name: "張醫師", nameEn: "Dr. Cheung", type: "TCM", bio: "專長：骨科、痛症", avatar: "/avatars/cheung.jpg" }),
-      Doctor.createDoctor({ name: "王醫師", nameEn: "Dr. Wong", type: "TCM", bio: "專長：腸胃、呼吸系統", avatar: "/avatars/wong.jpg" }),
-      Doctor.createDoctor({ name: "林醫師", nameEn: "Dr. Lam", type: "TCM", bio: "專長：神經系統、失眠", avatar: "/avatars/lam.jpg" }),
+      Doctor.createDoctor({ name: "陳醫師", type: "TCM", description: "專長：內科、婦科", avatar: "/avatars/chan.jpg" }),
+      Doctor.createDoctor({ name: "李醫師", type: "TCM", description: "專長：兒科、皮膚科", avatar: "/avatars/lee.jpg" }),
+      Doctor.createDoctor({ name: "張醫師", type: "TCM", description: "專長：骨科、痛症", avatar: "/avatars/cheung.jpg" }),
+      Doctor.createDoctor({ name: "王醫師", type: "TCM", description: "專長：腸胃、呼吸系統", avatar: "/avatars/wong.jpg" }),
+      Doctor.createDoctor({ name: "林醫師", type: "TCM", description: "專長：神經系統、失眠", avatar: "/avatars/lam.jpg" }),
       // Physiotherapists (3)
-      Doctor.createDoctor({ name: "黃物理治療師", nameEn: "Wong Physio", type: "Physio", bio: "專長：運動創傷、復康", avatar: "/avatars/wong_physio.jpg" }),
-      Doctor.createDoctor({ name: "周物理治療師", nameEn: "Chau Physio", type: "Physio", bio: "專長：脊椎、關節", avatar: "/avatars/chau.jpg" }),
-      Doctor.createDoctor({ name: "蔡物理治療師", nameEn: "Choi Physio", type: "Physio", bio: "專長：頸椎、腰椎", avatar: "/avatars/choi.jpg" }),
+      Doctor.createDoctor({ name: "黃物理治療師", type: "Physio", description: "專長：運動創傷、復康", avatar: "/avatars/wong_physio.jpg" }),
+      Doctor.createDoctor({ name: "周物理治療師", type: "Physio", description: "專長：脊椎、關節", avatar: "/avatars/chau.jpg" }),
+      Doctor.createDoctor({ name: "蔡物理治療師", type: "Physio", description: "專長：頸椎、腰椎", avatar: "/avatars/choi.jpg" }),
       // Bone Setters (2)
-      Doctor.createDoctor({ name: "吳正骨師", nameEn: "Ng Bone Setter", type: "Bone", bio: "專長：傳統正骨、跌打", avatar: "/avatars/ng.jpg" }),
-      Doctor.createDoctor({ name: "鄭正骨師", nameEn: "Cheng Bone Setter", type: "Bone", bio: "專長：頸椎、腰椎調整", avatar: "/avatars/cheng.jpg" })
+      Doctor.createDoctor({ name: "吳正骨師", type: "Bone", description: "專長：傳統正骨、跌打", avatar: "/avatars/ng.jpg" }),
+      Doctor.createDoctor({ name: "鄭正骨師", type: "Bone", description: "專長：頸椎、腰椎調整", avatar: "/avatars/cheng.jpg" })
     ]);
     console.log(`✅ Seeded ${doctors.length} doctors`);
 

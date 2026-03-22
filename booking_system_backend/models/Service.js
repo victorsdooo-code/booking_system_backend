@@ -3,7 +3,7 @@ const { ObjectId } = require('mongodb');
 
 const COLLECTION = 'services';
 
-// Schema: { name, duration: 15/45/60, isActive }
+// Schema: { name, duration (min), price, isActive }
 
 async function getAllServices(filters = {}) {
   const db = getDB();
@@ -29,10 +29,11 @@ async function getServiceById(id) {
 async function createService(service) {
   const db = getDB();
   const result = await db.collection(COLLECTION).insertOne({
-    ...service,
+    name: service.name,
+    duration: service.duration,
+    price: service.price || 0,
     isActive: service.isActive !== undefined ? service.isActive : true,
-    createdAt: new Date(),
-    updatedAt: new Date()
+    createdAt: new Date()
   });
   return { _id: result.insertedId, ...service };
 }
@@ -41,7 +42,7 @@ async function updateService(id, updates) {
   const db = getDB();
   await db.collection(COLLECTION).updateOne(
     { _id: new ObjectId(id) },
-    { $set: { ...updates, updatedAt: new Date() } }
+    { $set: updates }
   );
   return getServiceById(id);
 }

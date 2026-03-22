@@ -301,13 +301,15 @@ router.delete('/services/:id', async (req, res) => {
 // Schedule Management
 // ============================================
 
-// GET /api/admin/schedules - List schedules
+// GET /api/admin/schedules - List schedules with filters
 router.get('/schedules', async (req, res) => {
   try {
     console.log('🔧 ADMIN GET /api/admin/schedules', req.query);
-    const { doctorId, date } = req.query;
+    const { clinicId, doctorId, month, date } = req.query;
     const filters = {};
+    if (clinicId) filters.clinicId = clinicId;
     if (doctorId) filters.doctorId = doctorId;
+    if (month) filters.month = month;
     if (date) filters.date = date;
     
     const schedules = await Schedule.getAllSchedules(filters);
@@ -322,13 +324,23 @@ router.get('/schedules', async (req, res) => {
 router.post('/schedules', async (req, res) => {
   try {
     console.log('🔧 ADMIN POST /api/admin/schedules', req.body);
-    const { doctorId, date, startTime, endTime, isOverride } = req.body;
+    const { clinicId, doctorId, date, startTime, endTime, serviceId, isActive, isOverride, conflictAlert } = req.body;
     
     if (!doctorId || !date || !startTime || !endTime) {
-      return res.status(400).json({ success: false, error: '缺少必要欄位' });
+      return res.status(400).json({ success: false, error: '缺少必要欄位：醫生、日期、開始時間、結束時間' });
     }
     
-    const schedule = await Schedule.createSchedule({ doctorId, date, startTime, endTime, isOverride });
+    const schedule = await Schedule.createSchedule({ 
+      clinicId, 
+      doctorId, 
+      date, 
+      startTime, 
+      endTime, 
+      serviceId, 
+      isActive, 
+      isOverride, 
+      conflictAlert 
+    });
     res.status(201).json({ success: true, schedule });
   } catch (error) {
     console.error('Error creating schedule:', error);
@@ -423,7 +435,7 @@ router.post('/schedules/batch-copy', async (req, res) => {
 // Appointment Management
 // ============================================
 
-// GET /api/admin/appointments - List appointments with search & sort (NEW - Sprint 1.5)
+// GET /api/admin/appointments - List appointments with search & sort
 router.get('/appointments', async (req, res) => {
   try {
     console.log('🔧 ADMIN GET /api/admin/appointments', req.query);
@@ -438,6 +450,36 @@ router.get('/appointments', async (req, res) => {
     res.json({ success: true, count: appointments.length, appointments });
   } catch (error) {
     console.error('Error fetching appointments:', error);
+    res.status(500).json({ success: false, error: '伺服器錯誤' });
+  }
+});
+
+// POST /api/admin/appointments - Create a new appointment
+router.post('/appointments', async (req, res) => {
+  try {
+    console.log('🔧 ADMIN POST /api/admin/appointments', req.body);
+    const { clinicId, doctorId, serviceId, patientName, patientTitle, phone, date, time, status, notes, source } = req.body;
+    
+    if (!clinicId || !doctorId || !serviceId || !patientName || !phone || !date || !time) {
+      return res.status(400).json({ success: false, error: '缺少必要欄位' });
+    }
+    
+    const appointment = await Appointment.createAppointment({
+      clinicId,
+      doctorId,
+      serviceId,
+      patientName,
+      patientTitle,
+      phone,
+      date,
+      time,
+      status,
+      notes,
+      source
+    });
+    res.status(201).json({ success: true, appointment });
+  } catch (error) {
+    console.error('Error creating appointment:', error);
     res.status(500).json({ success: false, error: '伺服器錯誤' });
   }
 });
