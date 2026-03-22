@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: booking-system-backend
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    region: oregon
+    plan: free
+    branch: main
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: MONGODB_URI
+        sync: false
+        # REQUIRED: Set your MongoDB Atlas connection string in Render dashboard
+        # Example: mongodb+srv://username:password@cluster.mongodb.net/qingyiu_clinic?retryWrites=true&w=majority
+      - key: ADMIN_PASSWORD
+        sync: false
+        # REQUIRED: Set a secure admin password in Render dashboard
+        # Default for development: admin123
+      - key: CORS_ORIGIN
+        value: "*"
+        # In production, replace with your frontend URL (e.g., https://your-app.vercel.app)
