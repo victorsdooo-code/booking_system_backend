@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { body, param, query, validationResult } = require('express-validator');
+const authenticateAdmin = require('../middleware/authenticateAdmin');
 
 const {
   Clinic,
@@ -55,7 +56,16 @@ router.post('/clinics', [
   body('email').isEmail().normalizeEmail()
 ], validate, async (req, res) => {
   try {
-    const clinic = new Clinic(req.body);
+    const clinic = new Clinic({
+      name: req.body.name,
+      address: req.body.address,
+      phone: req.body.phone,
+      email: req.body.email,
+      description: req.body.description,
+      openingHours: req.body.openingHours,
+      businessHours: req.body.businessHours,  // ✅ Explicitly include businessHours
+      isActive: req.body.isActive !== undefined ? req.body.isActive : true
+    });
     await clinic.save();
     res.status(201).json({ success: true, data: clinic });
   } catch (error) {
@@ -360,6 +370,103 @@ router.get('/schedules', async (req, res) => {
   }
 });
 
+// ✅ SPECIFIC ROUTES MUST COME BEFORE PARAMETERIZED ROUTES
+
+// GET /api/admin/schedules/available-slots?clinicId=&date=&doctorId=
+router.get('/schedules/available-slots', authenticateAdmin, async (req, res) => {
+  try {
+    const { clinicId, date, doctorId } = req.query;
+    
+    // Get clinic business hours
+    const clinic = await Clinic.findById(clinicId);
+    if (!clinic) {
+      return res.status(404).json({ success: false, error: 'Clinic not found' });
+    }
+    
+    // Get day of week
+    const dayOfWeek = new Date(date).toLocaleDateString('en-US', { weekday: 'lowercase' });
+    const businessHours = clinic.businessHours[dayOfWeek];
+    
+    if (!businessHours || !businessHours.isOpen) {
+      return res.json({ 
+        success: true, 
+        available: false, 
+        message: 'Clinic is closed on this day',
+        slots: [] 
+      });
+    }
+    
+    // Get existing schedules for this date/doctor
+    const existingSchedules = await Schedule.find({
+      clinicId,
+      doctorId,
+      date: new Date(date),
+      isActive: true
+    });
+    
+    // Generate available time slots based on business hours
+    const slots = generateTimeSlots(businessHours.open, businessHours.close, existingSchedules);
+    
+    res.json({
+      success: true,
+      available: true,
+      businessHours,
+      slots
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/admin/schedules/batch-copy - Batch copy schedules to new dates
+router.post('/schedules/batch-copy', authenticateAdmin, async (req, res) => {
+  try {
+    const { sourceDate, targetDates, clinicId, doctorId } = req.body;
+    
+    // Get source schedules
+    const sourceSchedules = await Schedule.find({
+      date: new Date(sourceDate),
+      clinicId,
+      doctorId
+    });
+    
+    if (sourceSchedules.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'No schedules found for source date' 
+      });
+    }
+    
+    // Create copies for target dates
+    const newSchedules = [];
+    for (const targetDate of targetDates) {
+      for (const source of sourceSchedules) {
+        const newSchedule = new Schedule({
+          clinicId: source.clinicId,
+          doctorId: source.doctorId,
+          serviceId: source.serviceId,
+          date: new Date(targetDate),
+          startTime: source.startTime,
+          endTime: source.endTime,
+          isActive: true
+        });
+        await newSchedule.save();
+        newSchedules.push(newSchedule);
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      message: `Batch copied ${newSchedules.length} schedules`,
+      count: newSchedules.length
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ✅ PARAMETERIZED ROUTES AFTER SPECIFIC ROUTES
+
 // GET /api/admin/schedules/:id - Get schedule by ID
 router.get('/schedules/:id', async (req, res) => {
   try {
@@ -421,99 +528,6 @@ router.delete('/schedules/:id', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Schedule not found' });
     }
     res.json({ success: true, message: 'Schedule deleted', schedule });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// POST /api/admin/schedules/batch-copy - Batch copy schedules to new dates
-router.post('/schedules/batch-copy', async (req, res) => {
-  try {
-    const { sourceDate, targetDates, clinicId, doctorId } = req.body;
-    
-    // Get source schedules
-    const sourceSchedules = await Schedule.find({
-      date: new Date(sourceDate),
-      clinicId,
-      doctorId
-    });
-    
-    if (sourceSchedules.length === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'No schedules found for source date' 
-      });
-    }
-    
-    // Create copies for target dates
-    const newSchedules = [];
-    for (const targetDate of targetDates) {
-      for (const source of sourceSchedules) {
-        const newSchedule = new Schedule({
-          clinicId: source.clinicId,
-          doctorId: source.doctorId,
-          serviceId: source.serviceId,
-          date: new Date(targetDate),
-          startTime: source.startTime,
-          endTime: source.endTime,
-          isActive: true
-        });
-        await newSchedule.save();
-        newSchedules.push(newSchedule);
-      }
-    }
-    
-    res.json({ 
-      success: true, 
-      message: `Batch copied ${newSchedules.length} schedules`,
-      count: newSchedules.length
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// GET /api/admin/schedules/available-slots?clinicId=&date=&doctorId=
-router.get('/schedules/available-slots', authenticateAdmin, async (req, res) => {
-  try {
-    const { clinicId, date, doctorId } = req.query;
-    
-    // Get clinic business hours
-    const clinic = await Clinic.findById(clinicId);
-    if (!clinic) {
-      return res.status(404).json({ success: false, error: 'Clinic not found' });
-    }
-    
-    // Get day of week
-    const dayOfWeek = new Date(date).toLocaleDateString('en-US', { weekday: 'lowercase' });
-    const businessHours = clinic.businessHours[dayOfWeek];
-    
-    if (!businessHours || !businessHours.isOpen) {
-      return res.json({ 
-        success: true, 
-        available: false, 
-        message: 'Clinic is closed on this day',
-        slots: [] 
-      });
-    }
-    
-    // Get existing schedules for this date/doctor
-    const existingSchedules = await Schedule.find({
-      clinicId,
-      doctorId,
-      date: new Date(date),
-      isActive: true
-    });
-    
-    // Generate available time slots based on business hours
-    const slots = generateTimeSlots(businessHours.open, businessHours.close, existingSchedules);
-    
-    res.json({
-      success: true,
-      available: true,
-      businessHours,
-      slots
-    });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
