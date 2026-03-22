@@ -1,5 +1,18 @@
 # Render Deployment Setup
 
+## ⚠️ CRITICAL: After Pushing Code
+
+**BEFORE deploying, ensure MONGODB_URI is set in Render:**
+
+1. Go to Render Dashboard → Your Service → Environment
+2. Verify `MONGODB_URI` is set to your MongoDB Atlas connection string
+3. Click "Manual Deploy" to trigger a new deployment
+4. Check logs - you should see "✅ Connected to MongoDB"
+
+**If MONGODB_URI is missing, the server will fail to start with a clear error message.**
+
+---
+
 ## 1. Connect to GitHub Repo
 
 1. Go to: https://dashboard.render.com

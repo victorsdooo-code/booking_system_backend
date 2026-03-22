@@ -31,6 +31,7 @@ db.connect()
   });
 
 // Routes
+// Admin routes - ALL require authentication (auth applied in routes/admin.js)
 app.use('/api/admin', adminRoutes);
 
 // Health check endpoint

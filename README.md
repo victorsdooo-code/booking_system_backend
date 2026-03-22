@@ -19,7 +19,7 @@ RESTful API backend for the Qingyiu Clinic appointment booking system. Built wit
   - Appointment Management
 
 - **26+ API Endpoints** for complete CRUD operations
-- **JWT Authentication** for admin access
+- **Token Authentication** for admin access (X-Admin-Token header)
 - **MongoDB/Mongoose** for data persistence
 - **Express Validator** for input validation
 - **CORS Support** for frontend integration
@@ -42,7 +42,7 @@ booking_system_backend/
 ├── routes/
 │   └── admin.js              # All admin API endpoints
 ├── middleware/
-│   └── authenticateAdmin.js  # JWT authentication
+│   └── authenticateAdmin.js  # Token authentication (X-Admin-Token)
 ├── seeds/
 │   └── seed.js               # Default data seeding
 ├── .env.example              # Environment variables template
@@ -55,7 +55,7 @@ booking_system_backend/
 - **Runtime:** Node.js 18+
 - **Framework:** Express.js 4.18
 - **Database:** MongoDB with Mongoose 8.0
-- **Authentication:** JWT (jsonwebtoken)
+- **Authentication:** Token-based (X-Admin-Token header)
 - **Validation:** express-validator
 - **Security:** bcryptjs, cors
 
@@ -94,7 +94,7 @@ Server runs on `http://localhost:3000`
 
 ## 📡 API Endpoints
 
-All endpoints require JWT authentication (Bearer token in Authorization header).
+All `/api/admin/*` endpoints require authentication via `X-Admin-Token` header.
 
 ### Clinic Endpoints
 - `GET /api/admin/clinics` - Get all clinics
@@ -144,10 +144,23 @@ All endpoints require JWT authentication (Bearer token in Authorization header).
 
 ## 🔐 Authentication
 
-Include JWT token in Authorization header:
+All `/api/admin/*` endpoints require authentication.
 
+**Header:** `X-Admin-Token: admin123`
+
+**Example:**
+```bash
+curl https://booking-system-backend-hjwb.onrender.com/api/admin/clinics \
+  -H "X-Admin-Token: admin123"
 ```
-Authorization: Bearer <your-jwt-token>
+
+**Local Testing:**
+```bash
+# Without token (should fail)
+curl http://localhost:3000/api/admin/clinics
+
+# With token (should succeed)
+curl http://localhost:3000/api/admin/clinics -H "X-Admin-Token: admin123"
 ```
 
 ## 🌐 Deployment
@@ -168,18 +181,21 @@ See `RENDER_SETUP.md` for detailed instructions.
 | `MONGODB_URI` | Yes | MongoDB connection string |
 | `PORT` | No | Server port (default: 3000) |
 | `NODE_ENV` | No | Environment (default: development) |
-| `JWT_SECRET` | Yes | JWT signing secret |
+| `ADMIN_PASSWORD` | No | Admin token (default: admin123) |
 
 ## 🧪 Testing
 
 Test the API with:
 
 ```bash
-# Health check
+# Health check (no auth required)
 curl http://localhost:3000/api/health
 
-# With authentication
-curl -H "Authorization: Bearer <token>" http://localhost:3000/api/admin/clinics
+# Admin endpoint without token (should fail)
+curl http://localhost:3000/api/admin/clinics
+
+# Admin endpoint with token (should succeed)
+curl http://localhost:3000/api/admin/clinics -H "X-Admin-Token: admin123"
 ```
 
 ## 📄 License
