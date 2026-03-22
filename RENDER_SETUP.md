@@ -1,5 +1,23 @@
 # Render Deployment Setup
 
+## ✅ LATEST FIX (2026-03-22 16:55)
+
+**Issue:** Backend deployed but returned 404 for all API calls
+
+**Root Cause:** 
+- `middleware/authenticateAdmin.js` exported function incorrectly
+- `server.js` imported middleware incorrectly (got object instead of function)
+- Route registration had duplicate auth middleware
+
+**Fixed:**
+- Updated middleware to export `{ authenticateAdmin, ADMIN_TOKEN }`
+- Removed duplicate auth from server.js (auth already in routes/admin.js)
+- All 26 admin endpoints now working with `X-Admin-Token` header
+
+**Auto-deploy will trigger after push** - Check logs for "Server running on port 3000"
+
+---
+
 ## ⚠️ CRITICAL: After Pushing Code
 
 **BEFORE deploying, ensure MONGODB_URI is set in Render:**
