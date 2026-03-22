@@ -80,6 +80,23 @@ router.put('/clinics/:id', async (req, res) => {
   }
 });
 
+// DELETE /api/admin/clinics/:id - Delete clinic (soft delete)
+router.delete('/clinics/:id', async (req, res) => {
+  try {
+    const clinic = await Clinic.findByIdAndUpdate(
+      req.params.id,
+      { isActive: false },
+      { new: true }
+    );
+    if (!clinic) {
+      return res.status(404).json({ success: false, error: 'Clinic not found' });
+    }
+    res.json({ success: true, message: 'Clinic deleted', clinic });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ============================================
 // DOCTOR ENDPOINTS (4 endpoints)
 // ============================================
@@ -140,6 +157,23 @@ router.put('/doctors/:id', async (req, res) => {
     res.json({ success: true, data: doctor });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE /api/admin/doctors/:id - Delete doctor (soft delete)
+router.delete('/doctors/:id', async (req, res) => {
+  try {
+    const doctor = await Doctor.findByIdAndUpdate(
+      req.params.id,
+      { isActive: false },
+      { new: true }
+    );
+    if (!doctor) {
+      return res.status(404).json({ success: false, error: 'Doctor not found' });
+    }
+    res.json({ success: true, message: 'Doctor deleted', doctor });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -208,6 +242,23 @@ router.put('/services/:id', async (req, res) => {
   }
 });
 
+// DELETE /api/admin/services/:id - Delete service (soft delete)
+router.delete('/services/:id', async (req, res) => {
+  try {
+    const service = await Service.findByIdAndUpdate(
+      req.params.id,
+      { isActive: false },
+      { new: true }
+    );
+    if (!service) {
+      return res.status(404).json({ success: false, error: 'Service not found' });
+    }
+    res.json({ success: true, message: 'Service deleted', service });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ============================================
 // DOCTOR-SERVICE ENDPOINTS (4 endpoints)
 // ============================================
@@ -240,6 +291,23 @@ router.post('/doctor-services', [
       return res.status(400).json({ success: false, error: 'This doctor-service combination already exists' });
     }
     res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// PUT /api/admin/doctor-services/:id - Update doctor-service mapping
+router.put('/doctor-services/:id', async (req, res) => {
+  try {
+    const doctorService = await DoctorService.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+    if (!doctorService) {
+      return res.status(404).json({ success: false, error: 'Doctor service not found' });
+    }
+    res.json({ success: true, message: 'Doctor service updated', doctorService });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -338,6 +406,70 @@ router.put('/schedules/:id', async (req, res) => {
     res.json({ success: true, data: schedule });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE /api/admin/schedules/:id - Delete schedule (soft delete)
+router.delete('/schedules/:id', async (req, res) => {
+  try {
+    const schedule = await Schedule.findByIdAndUpdate(
+      req.params.id,
+      { isActive: false },
+      { new: true }
+    );
+    if (!schedule) {
+      return res.status(404).json({ success: false, error: 'Schedule not found' });
+    }
+    res.json({ success: true, message: 'Schedule deleted', schedule });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/admin/schedules/batch-copy - Batch copy schedules to new dates
+router.post('/schedules/batch-copy', async (req, res) => {
+  try {
+    const { sourceDate, targetDates, clinicId, doctorId } = req.body;
+    
+    // Get source schedules
+    const sourceSchedules = await Schedule.find({
+      date: new Date(sourceDate),
+      clinicId,
+      doctorId
+    });
+    
+    if (sourceSchedules.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'No schedules found for source date' 
+      });
+    }
+    
+    // Create copies for target dates
+    const newSchedules = [];
+    for (const targetDate of targetDates) {
+      for (const source of sourceSchedules) {
+        const newSchedule = new Schedule({
+          clinicId: source.clinicId,
+          doctorId: source.doctorId,
+          serviceId: source.serviceId,
+          date: new Date(targetDate),
+          startTime: source.startTime,
+          endTime: source.endTime,
+          isActive: true
+        });
+        await newSchedule.save();
+        newSchedules.push(newSchedule);
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      message: `Batch copied ${newSchedules.length} schedules`,
+      count: newSchedules.length
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
