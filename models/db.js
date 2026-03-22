@@ -1,6 +1,14 @@
 const mongoose = require('mongoose');
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/qingyiu_clinic';
+const MONGODB_URI = process.env.MONGODB_URI;
+
+// Validate MONGODB_URI is set
+if (!MONGODB_URI) {
+  console.error('❌ ERROR: MONGODB_URI environment variable is not set!');
+  console.error('Please set MONGODB_URI in Render Dashboard → Environment Variables');
+  console.error('Format: mongodb+srv://<username>:<password>@<cluster>.mongodb.net/<dbname>');
+  process.exit(1);
+}
 
 const connect = async () => {
   try {
