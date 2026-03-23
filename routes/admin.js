@@ -53,22 +53,26 @@ router.post('/clinics', [
   body('name').notEmpty().trim(),
   body('address').notEmpty().trim(),
   body('phone').notEmpty().trim(),
-  body('email').isEmail().normalizeEmail()
+  body('email').optional().isEmail().normalizeEmail()
 ], validate, async (req, res) => {
   try {
+    console.log('POST /clinics request body:', JSON.stringify(req.body, null, 2));
     const clinic = new Clinic({
       name: req.body.name,
-      address: req.body.address,
-      phone: req.body.phone,
-      email: req.body.email,
-      description: req.body.description,
-      openingHours: req.body.openingHours,
-      businessHours: req.body.businessHours,  // ✅ Explicitly include businessHours
+      address: req.body.address || '',
+      phone: req.body.phone || '',
+      email: req.body.email || '',
+      description: req.body.description || '',
+      openingHours: req.body.openingHours || {},
+      businessHours: req.body.businessHours || {},
       isActive: req.body.isActive !== undefined ? req.body.isActive : true
     });
     await clinic.save();
+    console.log('POST /clinics success:', clinic._id);
     res.status(201).json({ success: true, data: clinic });
   } catch (error) {
+    console.error('POST /clinics error:', error);
+    console.error('Error details:', { name: error.name, message: error.message, errors: error.errors });
     res.status(400).json({ success: false, error: error.message });
   }
 });
@@ -76,6 +80,7 @@ router.post('/clinics', [
 // PUT /api/admin/clinics/:id - Update clinic
 router.put('/clinics/:id', async (req, res) => {
   try {
+    console.log('PUT /clinics/:id request body:', JSON.stringify(req.body, null, 2));
     const clinic = await Clinic.findByIdAndUpdate(
       req.params.id,
       req.body,
@@ -84,8 +89,10 @@ router.put('/clinics/:id', async (req, res) => {
     if (!clinic) {
       return res.status(404).json({ success: false, error: 'Clinic not found' });
     }
+    console.log('PUT /clinics/:id success:', clinic._id);
     res.json({ success: true, data: clinic });
   } catch (error) {
+    console.error('PUT /clinics/:id error:', error);
     res.status(400).json({ success: false, error: error.message });
   }
 });
@@ -145,10 +152,24 @@ router.post('/doctors', [
   body('clinic').isMongoId()
 ], validate, async (req, res) => {
   try {
-    const doctor = new Doctor(req.body);
+    console.log('POST /doctors request body:', JSON.stringify(req.body, null, 2));
+    const doctor = new Doctor({
+      name: req.body.name,
+      title: req.body.title,
+      specialty: req.body.specialty,
+      description: req.body.description || '',
+      photo: req.body.photo || '',
+      phone: req.body.phone || '',
+      email: req.body.email || '',
+      clinic: req.body.clinic,
+      isActive: req.body.isActive !== undefined ? req.body.isActive : true
+    });
     await doctor.save();
+    console.log('POST /doctors success:', doctor._id);
     res.status(201).json({ success: true, data: doctor });
   } catch (error) {
+    console.error('POST /doctors error:', error);
+    console.error('Error details:', { name: error.name, message: error.message, errors: error.errors });
     res.status(400).json({ success: false, error: error.message });
   }
 });
@@ -156,6 +177,7 @@ router.post('/doctors', [
 // PUT /api/admin/doctors/:id - Update doctor
 router.put('/doctors/:id', async (req, res) => {
   try {
+    console.log('PUT /doctors/:id request body:', JSON.stringify(req.body, null, 2));
     const doctor = await Doctor.findByIdAndUpdate(
       req.params.id,
       req.body,
@@ -164,8 +186,10 @@ router.put('/doctors/:id', async (req, res) => {
     if (!doctor) {
       return res.status(404).json({ success: false, error: 'Doctor not found' });
     }
+    console.log('PUT /doctors/:id success:', doctor._id);
     res.json({ success: true, data: doctor });
   } catch (error) {
+    console.error('PUT /doctors/:id error:', error);
     res.status(400).json({ success: false, error: error.message });
   }
 });
@@ -227,10 +251,22 @@ router.post('/services', [
   body('clinic').isMongoId()
 ], validate, async (req, res) => {
   try {
-    const service = new Service(req.body);
+    console.log('POST /services request body:', JSON.stringify(req.body, null, 2));
+    const service = new Service({
+      name: req.body.name,
+      description: req.body.description,
+      category: req.body.category,
+      duration: req.body.duration,
+      price: req.body.price,
+      clinic: req.body.clinic,
+      isActive: req.body.isActive !== undefined ? req.body.isActive : true
+    });
     await service.save();
+    console.log('POST /services success:', service._id);
     res.status(201).json({ success: true, data: service });
   } catch (error) {
+    console.error('POST /services error:', error);
+    console.error('Error details:', { name: error.name, message: error.message, errors: error.errors });
     res.status(400).json({ success: false, error: error.message });
   }
 });
@@ -238,6 +274,7 @@ router.post('/services', [
 // PUT /api/admin/services/:id - Update service
 router.put('/services/:id', async (req, res) => {
   try {
+    console.log('PUT /services/:id request body:', JSON.stringify(req.body, null, 2));
     const service = await Service.findByIdAndUpdate(
       req.params.id,
       req.body,
@@ -246,8 +283,10 @@ router.put('/services/:id', async (req, res) => {
     if (!service) {
       return res.status(404).json({ success: false, error: 'Service not found' });
     }
+    console.log('PUT /services/:id success:', service._id);
     res.json({ success: true, data: service });
   } catch (error) {
+    console.error('PUT /services/:id error:', error);
     res.status(400).json({ success: false, error: error.message });
   }
 });
@@ -293,10 +332,18 @@ router.post('/doctor-services', [
   body('clinic').isMongoId()
 ], validate, async (req, res) => {
   try {
-    const doctorService = new DoctorService(req.body);
+    console.log('POST /doctor-services request body:', JSON.stringify(req.body, null, 2));
+    const doctorService = new DoctorService({
+      doctor: req.body.doctor,
+      service: req.body.service,
+      clinic: req.body.clinic,
+      isActive: req.body.isActive !== undefined ? req.body.isActive : true
+    });
     await doctorService.save();
+    console.log('POST /doctor-services success:', doctorService._id);
     res.status(201).json({ success: true, data: doctorService });
   } catch (error) {
+    console.error('POST /doctor-services error:', error);
     if (error.code === 11000) {
       return res.status(400).json({ success: false, error: 'This doctor-service combination already exists' });
     }
@@ -307,6 +354,7 @@ router.post('/doctor-services', [
 // PUT /api/admin/doctor-services/:id - Update doctor-service mapping
 router.put('/doctor-services/:id', async (req, res) => {
   try {
+    console.log('PUT /doctor-services/:id request body:', JSON.stringify(req.body, null, 2));
     const doctorService = await DoctorService.findByIdAndUpdate(
       req.params.id,
       req.body,
@@ -315,8 +363,10 @@ router.put('/doctor-services/:id', async (req, res) => {
     if (!doctorService) {
       return res.status(404).json({ success: false, error: 'Doctor service not found' });
     }
+    console.log('PUT /doctor-services/:id success:', doctorService._id);
     res.json({ success: true, message: 'Doctor service updated', doctorService });
   } catch (error) {
+    console.error('PUT /doctor-services/:id error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

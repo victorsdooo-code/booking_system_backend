@@ -18,9 +18,9 @@ const clinicSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    required: [true, 'Clinic email is required'],
     trim: true,
-    lowercase: true
+    lowercase: true,
+    default: ''
   },
   description: {
     type: String,
