@@ -8,29 +8,33 @@ const serviceSchema = new mongoose.Schema({
   },
   description: {
     type: String,
-    required: [true, 'Service description is required'],
+    required: false,
+    default: '',
     trim: true
   },
   category: {
     type: String,
-    required: [true, 'Service category is required'],
+    required: false,
+    default: '',
     trim: true
   },
   duration: {
     type: Number,
-    required: [true, 'Service duration is required'],
+    required: false,
     min: [5, 'Duration must be at least 5 minutes'],
     default: 30
   },
   price: {
     type: Number,
-    required: [true, 'Service price is required'],
-    min: [0, 'Price cannot be negative']
+    required: false,
+    min: [0, 'Price cannot be negative'],
+    default: 0
   },
   clinic: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Clinic',
-    required: [true, 'Clinic association is required']
+    required: false,
+    default: null
   },
   isActive: {
     type: Boolean,

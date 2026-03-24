@@ -8,12 +8,14 @@ const doctorSchema = new mongoose.Schema({
   },
   title: {
     type: String,
-    required: [true, 'Doctor title is required'],
+    required: false,
+    default: '',
     trim: true
   },
   specialty: {
     type: String,
-    required: [true, 'Doctor specialty is required'],
+    required: false,
+    default: '',
     trim: true
   },
   description: {
@@ -36,7 +38,8 @@ const doctorSchema = new mongoose.Schema({
   clinic: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Clinic',
-    required: [true, 'Clinic association is required']
+    required: false,
+    default: null
   },
   isActive: {
     type: Boolean,

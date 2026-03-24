@@ -147,9 +147,9 @@ router.get('/doctors/:id', async (req, res) => {
 // POST /api/admin/doctors - Create doctor
 router.post('/doctors', [
   body('name').notEmpty().trim(),
-  body('title').notEmpty().trim(),
-  body('specialty').notEmpty().trim(),
-  body('clinic').isMongoId()
+  body('title').optional().trim(),
+  body('specialty').optional().trim(),
+  body('clinic').optional().isMongoId()
 ], validate, async (req, res) => {
   try {
     console.log('POST /doctors request body:', JSON.stringify(req.body, null, 2));
@@ -244,11 +244,11 @@ router.get('/services/:id', async (req, res) => {
 // POST /api/admin/services - Create service
 router.post('/services', [
   body('name').notEmpty().trim(),
-  body('description').notEmpty().trim(),
-  body('category').notEmpty().trim(),
-  body('duration').isInt({ min: 5 }),
-  body('price').isFloat({ min: 0 }),
-  body('clinic').isMongoId()
+  body('description').optional().trim(),
+  body('category').optional().trim(),
+  body('duration').optional().isInt({ min: 5 }),
+  body('price').optional().isFloat({ min: 0 }),
+  body('clinic').optional().isMongoId()
 ], validate, async (req, res) => {
   try {
     console.log('POST /services request body:', JSON.stringify(req.body, null, 2));
