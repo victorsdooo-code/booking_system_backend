@@ -11,6 +11,12 @@ const scheduleSchema = new mongoose.Schema({
     ref: 'Doctor',
     required: [true, 'Doctor is required']
   },
+  serviceId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Service',
+    required: false,
+    default: null
+  },
   date: {
     type: Date,
     required: [true, 'Date is required']
@@ -44,6 +50,7 @@ const scheduleSchema = new mongoose.Schema({
 });
 
 // Index for efficient date-based queries
-scheduleSchema.index({ doctor: 1, date: 1 });
+scheduleSchema.index({ doctorId: 1, date: 1 });
+scheduleSchema.index({ clinicId: 1, date: 1 });
 
 module.exports = mongoose.model('Schedule', scheduleSchema);

@@ -18,6 +18,16 @@ const doctorSchema = new mongoose.Schema({
     default: '',
     trim: true
   },
+  type: {
+    type: String,
+    required: [true, 'Doctor type is required'],
+    enum: ['TCM', 'Physio', 'Western'],
+    enumTranslate: {
+      'TCM': '中醫師',
+      'Physio': '物理治療師',
+      'Western': '西醫'
+    }
+  },
   description: {
     type: String,
     trim: true
@@ -48,5 +58,8 @@ const doctorSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+// Index for filtering by type
+doctorSchema.index({ type: 1, isActive: 1 });
 
 module.exports = mongoose.model('Doctor', doctorSchema);

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { body, param, query, validationResult } = require('express-validator');
 const authenticateAdmin = require('../middleware/authenticateAdmin');
+const { uploadDoctorPhoto } = require('../middleware/upload');
 
 const {
   Clinic,
@@ -121,7 +122,14 @@ router.delete('/clinics/:id', async (req, res) => {
 // GET /api/admin/doctors - Get all doctors
 router.get('/doctors', async (req, res) => {
   try {
-    const doctors = await Doctor.find()
+    const { type, clinic, isActive } = req.query;
+    const filter = {};
+    
+    if (type) filter.type = type;
+    if (clinic) filter.clinic = clinic;
+    if (isActive !== undefined) filter.isActive = isActive === 'true';
+    
+    const doctors = await Doctor.find(filter)
       .populate('clinic', 'name address')
       .sort({ createdAt: -1 });
     res.json({ success: true, data: doctors });
@@ -144,26 +152,32 @@ router.get('/doctors/:id', async (req, res) => {
   }
 });
 
-// POST /api/admin/doctors - Create doctor
+// POST /api/admin/doctors - Create doctor (with optional photo upload)
 router.post('/doctors', [
   body('name').notEmpty().trim(),
+  body('type').isIn(['TCM', 'Physio', 'Western']).withMessage('Doctor type must be TCM, Physio, or Western'),
   body('title').optional().trim(),
   body('specialty').optional().trim(),
   body('clinic').optional().isMongoId()
-], validate, async (req, res) => {
+], validate, uploadDoctorPhoto.single('photo'), async (req, res) => {
   try {
     console.log('POST /doctors request body:', JSON.stringify(req.body, null, 2));
-    const doctor = new Doctor({
+    
+    // Build doctor object
+    const doctorData = {
       name: req.body.name,
-      title: req.body.title,
-      specialty: req.body.specialty,
+      type: req.body.type,
+      title: req.body.title || '',
+      specialty: req.body.specialty || '',
       description: req.body.description || '',
-      photo: req.body.photo || '',
+      photo: req.file ? `/uploads/avatars/${req.file.filename}` : (req.body.photo || ''),
       phone: req.body.phone || '',
       email: req.body.email || '',
       clinic: req.body.clinic,
       isActive: req.body.isActive !== undefined ? req.body.isActive : true
-    });
+    };
+    
+    const doctor = new Doctor(doctorData);
     await doctor.save();
     console.log('POST /doctors success:', doctor._id);
     res.status(201).json({ success: true, data: doctor });
@@ -174,13 +188,21 @@ router.post('/doctors', [
   }
 });
 
-// PUT /api/admin/doctors/:id - Update doctor
-router.put('/doctors/:id', async (req, res) => {
+// PUT /api/admin/doctors/:id - Update doctor (with optional photo upload)
+router.put('/doctors/:id', uploadDoctorPhoto.single('photo'), async (req, res) => {
   try {
     console.log('PUT /doctors/:id request body:', JSON.stringify(req.body, null, 2));
+    
+    const updateData = { ...req.body };
+    
+    // Handle photo upload
+    if (req.file) {
+      updateData.photo = `/uploads/avatars/${req.file.filename}`;
+    }
+    
     const doctor = await Doctor.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      updateData,
       { new: true, runValidators: true }
     ).populate('clinic', 'name address');
     if (!doctor) {
@@ -422,10 +444,10 @@ router.get('/schedules', async (req, res) => {
 
 // ✅ SPECIFIC ROUTES MUST COME BEFORE PARAMETERIZED ROUTES
 
-// GET /api/admin/schedules/available-slots?clinicId=&date=&doctorId=
+// GET /api/admin/schedules/available-slots?clinicId=&date=&doctorId=&serviceId=
 router.get('/schedules/available-slots', authenticateAdmin, async (req, res) => {
   try {
-    const { clinicId, date, doctorId } = req.query;
+    const { clinicId, date, doctorId, serviceId } = req.query;
     
     // Get clinic business hours
     const clinic = await Clinic.findById(clinicId);
@@ -446,6 +468,15 @@ router.get('/schedules/available-slots', authenticateAdmin, async (req, res) => 
       });
     }
     
+    // Get service duration if serviceId provided
+    let serviceDuration = 30; // default 30 minutes
+    if (serviceId) {
+      const service = await Service.findById(serviceId);
+      if (service) {
+        serviceDuration = service.duration || 30;
+      }
+    }
+    
     // Get existing schedules for this date/doctor
     const existingSchedules = await Schedule.find({
       clinicId,
@@ -454,13 +485,22 @@ router.get('/schedules/available-slots', authenticateAdmin, async (req, res) => 
       isActive: true
     });
     
-    // Generate available time slots based on business hours
-    const slots = generateTimeSlots(businessHours.open, businessHours.close, existingSchedules);
+    // Get existing appointments for this date/doctor
+    const existingAppointments = await Appointment.find({
+      clinic: clinicId,
+      doctor: doctorId,
+      date: new Date(date),
+      status: { $in: ['pending', 'confirmed'] }
+    });
+    
+    // Generate available time slots based on business hours and service duration
+    const slots = generateTimeSlots(businessHours.open, businessHours.close, existingSchedules, existingAppointments, serviceDuration);
     
     res.json({
       success: true,
       available: true,
       businessHours,
+      serviceDuration,
       slots
     });
   } catch (error) {
@@ -584,9 +624,9 @@ router.delete('/schedules/:id', async (req, res) => {
 });
 
 // Helper function to generate time slots
-function generateTimeSlots(openTime, closeTime, existingSchedules) {
+function generateTimeSlots(openTime, closeTime, existingSchedules, existingAppointments = [], serviceDuration = 30) {
   const slots = [];
-  const slotDuration = 30; // 30-minute slots
+  const slotDuration = serviceDuration; // Use service duration for slot size
   
   // Parse open and close times
   const [openHour, openMinute] = openTime.split(':').map(Number);
@@ -604,7 +644,21 @@ function generateTimeSlots(openTime, closeTime, existingSchedules) {
     
     while (currentTime < endTime) {
       bookedSlots.add(currentTime);
-      currentTime += slotDuration;
+      currentTime += 30; // Use 30-min granularity for schedule blocking
+    }
+  });
+  
+  // Mark booked slots from existing appointments
+  existingAppointments.forEach(appointment => {
+    const [startHour, startMinute] = appointment.startTime.split(':').map(Number);
+    const [endHour, endMinute] = appointment.endTime.split(':').map(Number);
+    
+    let currentTime = startHour * 60 + startMinute;
+    const endTime = endHour * 60 + endMinute;
+    
+    while (currentTime < endTime) {
+      bookedSlots.add(currentTime);
+      currentTime += 30;
     }
   });
   
@@ -614,16 +668,29 @@ function generateTimeSlots(openTime, closeTime, existingSchedules) {
   
   while (currentTime + slotDuration <= closeTimeInMinutes) {
     const timeString = `${String(Math.floor(currentTime / 60)).padStart(2, '0')}:${String(currentTime % 60).padStart(2, '0')}`;
+    const endTimeInMinutes = currentTime + slotDuration;
     
-    if (!bookedSlots.has(currentTime)) {
+    // Check if this slot is available (not booked)
+    let isAvailable = true;
+    let checkTime = currentTime;
+    while (checkTime < endTimeInMinutes) {
+      if (bookedSlots.has(checkTime)) {
+        isAvailable = false;
+        break;
+      }
+      checkTime += 30;
+    }
+    
+    if (isAvailable) {
       slots.push({
         startTime: timeString,
-        endTime: `${String(Math.floor((currentTime + slotDuration) / 60)).padStart(2, '0')}:${String((currentTime + slotDuration) % 60).padStart(2, '0')}`,
-        available: true
+        endTime: `${String(Math.floor(endTimeInMinutes / 60)).padStart(2, '0')}:${String(endTimeInMinutes % 60).padStart(2, '0')}`,
+        available: true,
+        duration: slotDuration
       });
     }
     
-    currentTime += slotDuration;
+    currentTime += 30; // Move by 30-min intervals for slot starts
   }
   
   return slots;
